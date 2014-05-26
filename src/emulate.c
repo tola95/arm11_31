@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <stdint.h>
 
   typedef struct {
  	uint32_t r[17];
@@ -15,10 +16,10 @@
 
  
 
- int binaryToDec(int bin[4]) {
+ /*int binaryToDec(int bin[4]) {
  	//Doesn't work correctly yet
  	int answer = 0;
- 	int power = size - 1;
+ 	int power = 3;
  	for (int i = 0; i<4; i++ ) {
  		answer = answer + (bin[i] * pow(2, power )) ;
  		power--;
@@ -42,21 +43,16 @@
 	 } 	
 	 p = answer;
 	 return p;
- }
+ } 
 
 
  void putinreg(int rd[], int *arg) {
- 	for (int i=0; i<32; i++) {
- 		reg.r[binaryToDec(rd)][i] = arg
- 	}
+ 	
  	
  }
 
  int *fetchfromreg(int rn[]) {
- 	int arg = binaryToDec(rn);
- 	uint32_t *p;
- 	p = Reg.r[arg];
- 	return p;
+
  }
 
  
@@ -93,7 +89,7 @@
  	 // Move op2 to destination register
  	putinreg(rd, op2);
 
- }
+ }*/
 
  
 
@@ -112,7 +108,7 @@
 	 uint32_t zero = 0;
 
 	 int i;
-	 for (i = 0; i < 16394; i++ ){
+	 for (i = 0; i < 16384; i++ ){
 		 Memory[i] = zero;
 	 }
 
@@ -120,13 +116,19 @@
 	 FILE *file = fopen(argv[1], "rb");
 
 	 if (file == NULL){
-		 perror("Error: Could not open file. stars is sexy");
+		 perror("Error: Could not open file.");
 		 exit(EXIT_FAILURE);
 	 }
+     
+     
+     /* Calculate file size then from the size, the number of 32-bit instructions */  
+     struct stat st;
+     fstat((open(file, O_RDONLY)), &st);
+     int instructionsSize = st.st_size/4;
+	
+	 printf("%d \n", instructionsSize);
 
-	 fseek(file, 0, SEEK_END);
-	 int instructionsSize = ftell(file)/4; /* gives the number of 32-bit words in file */
-	 fseek(file, 0, SEEK_SET);
+	 
 
 	 fread(Memory, 4, instructionsSize, file );
 
