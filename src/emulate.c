@@ -104,23 +104,38 @@
  
 
  //Main Function
- int main(void) {
-/*
-	 We have to do the memory (array of arrays (16384 X 32 bits))
-	 We have to do the registers (array of arrays 17 X 32 bits)
-*/
-	 for(int i=0; i<17; i++) { // 11
-		for (int j=0; j<32; j++) { //12
-			reg[i][j] = 0;
-		}
+ int main(int argc, char **argv) {
+
+
+	 /* initialise memory to 0 */
+	 uint32_t Memory[16384];
+	 uint32_t zero = 0;
+
+	 int i;
+	 for (i = 0; i < 16394; i++ ){
+		 Memory[i] = zero;
 	 }
-     
-/*
-	 Check cond (first four bits) and S fields and set CPSR flag accordingly
-	 Check Immediate Operand and update Operand 2 acordingly.
-	 Check Opcode and 
-*/
-	 printf("works\n");
+
+	 /* file loading */
+	 FILE *file = fopen(argv[1], "rb");
+
+	 if (file == NULL){
+		 perror("Error: Could not open file. stars is sexy");
+		 exit(EXIT_FAILURE);
+	 }
+
+	 fseek(file, 0, SEEK_END);
+	 int instructionsSize = ftell(file)/4; /* gives the number of 32-bit words in file */
+	 fseek(file, 0, SEEK_SET);
+
+	 fread(Memory, 4, instructionsSize, file );
+
+	 /* file closing */
+	 fclose(file);
+
+
+
+
 	 return EXIT_SUCCESS;
 
  }
