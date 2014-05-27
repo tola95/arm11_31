@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <stdint.h>
 
 const int NUMBER_OF_REFISTERS = 17;
 const int memSize = 16384;
@@ -20,10 +21,10 @@ const int memSize = 16384;
     Reg.r[reg] = rn & op2;
 } 
 
- int binaryToDec(int bin[4]) {
+ /*int binaryToDec(int bin[4]) {
  	//Doesn't work correctly yet
  	int answer = 0;
- 	int power = size - 1;
+ 	int power = 3;
  	for (int i = 0; i<4; i++ ) {
  		answer = answer + (bin[i] * pow(2, power )) ;
  		power--;
@@ -42,21 +43,23 @@ const int memSize = 16384;
 	 } 	
 	 p = answer;
 	 return p;
- }
+ } 
 
 
+<<<<<<< HEAD
 // void putinreg(int rd[], int *arg) {
  //	for (int i=0; i<32; i++) {
  //		reg.r[binaryToDec(rd)][i] = arg
  //	}
+=======
+ void putinreg(int rd[], int *arg) {
+ 	
+>>>>>>> 80be31804051045b989a6675a18c6b021ea386ab
  	
  //}
 
  int *fetchfromreg(int rn[]) {
- 	int arg = binaryToDec(rn);
- 	uint32_t *p;
- 	p = Reg.r[arg];
- 	return p;
+
  }
 
  
@@ -89,38 +92,64 @@ const int memSize = 16384;
 
   }
 
+<<<<<<< HEAD
  }
+=======
+ void mov(int op2[], int rd[]) {
+ 	 // Move op2 to destination register
+ 	putinreg(rd, op2);
+
+ }*/
+>>>>>>> 80be31804051045b989a6675a18c6b021ea386ab
 
  //Main Function
  int main(int argc, char **argv) {
 
 
-	 /* initialise memory to 0 */
-	 uint32_t Memory[16384];
-	 uint32_t zero = 0;
+	 /* Allocate memory array */
+	 const int memSize = 16384; //maximum number of instructions that can be stored.
+	 uint32_t *memory = malloc( memSize * sizeof(uint32_t) );
 
+	 /* initialise memory to 0 */
+	 uint32_t zero = 0;
 	 int i;
-	 for (i = 0; i < 16394; i++ ){
-		 Memory[i] = zero;
+	 for (i = 0; i < memSize; i++ ){
+		 memory[i] = zero;
 	 }
 
 	 /* file loading */
 	 FILE *file = fopen(argv[1], "rb");
 
 	 if (file == NULL){
-		 perror("Error: Could not open file. stars is sexy");
+		 perror("Error: Could not open file.");
 		 exit(EXIT_FAILURE);
 	 }
+     
+     
+     /* Calculate file size then from the size, the number of 32-bit instructions in the file */
+     const int bytesPerInstruction = 4;
+     fseek( file, 0, SEEK_END );
+     int instructionsSize = ftell(file)/bytesPerInstruction;
+     fseek( file, 0, SEEK_SET );
 
-	 fseek(file, 0, SEEK_END);
-	 int instructionsSize = ftell(file)/4; /* gives the number of 32-bit words in file */
-	 fseek(file, 0, SEEK_SET);
 
-	 fread(Memory, 4, instructionsSize, file );
+	 fread(memory, bytesPerInstruction, instructionsSize, file );
 
 	 /* file closing */
 	 fclose(file);
 
+
+	// just to make sure its working.
+	 printf("%d \n", instructionsSize);
+
+	 i = 0;
+	 for ( i = 0; i < memSize; i++ ) {
+
+	    printf("%x " , memory[i] );
+
+	 }
+
+    printf("\n");
 
 
 
