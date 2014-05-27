@@ -137,7 +137,7 @@ void decode(struct fetchedInstruction fetched){
     decoded.pending = 0;    
 
     
-    //main pipeline loop
+    //main pipeline loop.
      while ( 1 ) {
 
 
