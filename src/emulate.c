@@ -14,10 +14,24 @@ const int memSize = 16384; //maximum number of instructions that can be stored.
 uint32_t zero = 0;
 
 //Struct representing the state of machine
-  struct arm_State {
+ struct arm_State {
  	uint32_t reg[17];
 	uint32_t memory[16384];	
- }  ;
+ };
+
+ void and(struct arm_State state, uint32_t rn, uint32_t op2, int r) {
+ 	state.reg[r] = rn & op2;
+ }
+
+ void eor(struct arm_State state, uint32_t rn, uint32_t op2, int r) {
+ 	state.reg[r] = rn ^ op2;
+ }
+
+ void sub(struct arm_State state, uint32_t rn, uint32_t op2, int r) {
+ 	uint32_t one = 1;
+ 	uint32_t result = ~op2 + one;
+ 	state.reg[r] = result;
+ }
 
 
  
@@ -32,7 +46,7 @@ uint32_t zero = 0;
  	}
  	return answer;
  }
-/*
+
  int *reverse(int arg[]) {
 
  }
@@ -161,7 +175,7 @@ uint32_t zero = 0;
 	 i = 0;
 	 for ( i = 0; i < NUMBER_OF_REGISTERS; i++ ) {
 
-	    printf("%x " , ARM_State.reg[i] );
+	    printf("%x" , ARM_State.reg[i] );
 
 	 }
 
