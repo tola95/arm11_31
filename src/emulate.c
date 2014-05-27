@@ -8,12 +8,17 @@
 #include <stdlib.h>
 #include <math.h>
 
+const int NUMBER_OF_REFISTERS = 17;
+const int memSize = 16384;
+
   typedef struct {
- 	uint32_t r[17];
- 	
+ 	uint32_t reg[17];
+        uint32_t memory[memSize];
  } Reg ;
 
- 
+ void and(uint32_t rn, int reg, uint32_t op2) {
+    Reg.r[reg] = rn & op2;
+} 
 
  int binaryToDec(int bin[4]) {
  	//Doesn't work correctly yet
@@ -25,11 +30,6 @@
  	}
  	return answer;
  }
-
- int *reverse(int arg[]) {
-
- }
-
 
  int *decToBinary(int i) {
 	 int answer[32]; // 1
@@ -45,12 +45,12 @@
  }
 
 
- void putinreg(int rd[], int *arg) {
- 	for (int i=0; i<32; i++) {
- 		reg.r[binaryToDec(rd)][i] = arg
- 	}
+// void putinreg(int rd[], int *arg) {
+ //	for (int i=0; i<32; i++) {
+ //		reg.r[binaryToDec(rd)][i] = arg
+ //	}
  	
- }
+ //}
 
  int *fetchfromreg(int rn[]) {
  	int arg = binaryToDec(rn);
@@ -89,19 +89,7 @@
 
   }
 
- void mov(int op2[], int rd[]) {
- 	 // Move op2 to destination register
- 	putinreg(rd, op2);
-
  }
-
- 
-
- 
-
- 
-
- 
 
  //Main Function
  int main(int argc, char **argv) {
