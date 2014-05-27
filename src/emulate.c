@@ -13,18 +13,36 @@ const int NUMBER_OF_REGISTERS = 17; // Number of registers
 const int memSize = 16384; //maximum number of instructions that can be stored.
 uint32_t zero = 0;
 
+
 //Struct representing the state of machine
- struct arm_State {
+  struct arm_State {
  	uint32_t reg[17];
 	uint32_t memory[16384];	
- };
+ }  ;
 
+//Helper method to write to register
+ void putinreg(struct arm_State state, uint32_t rd, uint32_t op2) {
+ 	state.reg[rd] = op2;	
+ }
+ 
  void and(struct arm_State state, uint32_t rn, uint32_t op2, int r) {
  	state.reg[r] = rn & op2;
  }
 
  void eor(struct arm_State state, uint32_t rn, uint32_t op2, int r) {
  	state.reg[r] = rn ^ op2;
+ }
+
+ void sub(struct arm_State state, uint32_t rn, uint32_t op2, int r) {
+ 	state.reg[r] = rn - op2;
+ }
+
+ void rsb(struct arm_State state, uint32_t rn, uint32_t op2, int r) {
+ 	state.reg[r] = op2 - rn;
+ }
+
+ void rsb(struct arm_State state, uint32_t rn, uint32_t op2, int t) {
+ 	state.reg[r] = op2 + rn;
  }
 
  void sub(struct arm_State state, uint32_t rn, uint32_t op2, int r) {
@@ -41,83 +59,98 @@ uint32_t zero = 0;
  	state.reg[r] = rn + op2;
  }
 
+=======
+//Helper method to fetch from register
+ uint32_t fetchfromreg(struct arm_State state, uint32_t rn) {
+	return state.reg[rn];
+ }
+
+//Helper method for selecting bits
+ uint32_t selectbits(uint32_t i, int first, int last) {
+	uint32_t mask = 0;
+	int count = first;
+>>>>>>> b7e5d4ecaa8b93084fea1798b5152b7339c803a9
+
+        //Create the 32 bit mask
+	while (count>=last) {
+		mask = mask + 1  * pow(2, count);
+		count--;
+	}
+        
+	//& operation to extract the required bits
+	i &= mask;
+
+	//Extract the bits by shift right by 'last' amount of bits
+	i >>= last;
+
+        return i;
+ }
 
  
+
+ //Data Processing Instructions
+
+void and(struct arm_State state, uint32_t rn, uint32_t op2, int r) {
+ 	state.reg[r] = rn & op2;
+ }
+
+ void eor(struct arm_State state, uint32_t rn, uint32_t op2, int r) {
+ 	state.reg[r] = rn ^ op2;
+ }
+
+ void sub(struct arm_State state, uint32_t rn, uint32_t op2, int r) {
+ 	uint32_t one = 1;
+ 	uint32_t result = ~op2 + one;
+ 	state.reg[r] = result;
+ }
+
 /*
- int binaryToDec(int bin[4]) {
- 	//Doesn't work correctly yet
- 	int answer = 0;
- 	int power = 3;
- 	for (int i = 0; i<4; i++ ) {
- 		answer = answer + (bin[i] * pow(2, power )) ;
- 		power--;
- 	}
- 	return answer;
- }
-
- int *reverse(int arg[]) {
-
- }
-
-
- int *decToBinary(int i) {
-	 int answer[32]; // 1
-	 int *p;
-	 int j = 0;
-	 while (i>0) {
-        answer[j] = i % 2 ; 
-        i = floor(i/2);
-        j++;
-	 } 	
-	 p = answer;
-	 return p;
- } 
-
-
- void putinreg(int rd[], int *arg) {
- 	
- 	
- }
-
- int *fetchfromreg(int rn[]) {
-
- }
-
- 
-
- void teq(int rn[4], int op2[12]) {
+ void teq(struct arm_State state, uint32_t rn, uint32_t op2) {
 	 // As EOR but result not written
- 	// Assuming EOR just works on the last bit
- 	int *op1 = fetchfromreg(rn);
- 	int result = op1[32 - 1] ^ op2[17 - 1]; // 4, 5
+ 	uint32_t op1 = fetchfromreg(state, rn);
+ 	uint32_t result = op1 ^ op2; // 4, 5
   }
-
- void cmp(int rn[], int op2[]) {
+*/
+ void cmp(struct arm_State state, uint32_t rn,  uint32_t op2) {
 	 // As SUB but result not written
- 	 int arg1 = binaryToDec(fetchfromreg(rn));
- 	 int arg2 = binaryToDec(op2);
- 	 int *result = decToBinary(arg1 - arg2);
+ 	 uint32_t op1 = fetchfromreg(state, rn);
+ 	 uint32_t result = op1 - op2;
+	 uint32_t newbit = 0;
+         uint32_t CPSR = fetchfromreg(state, 15); //Fetch contents of reg 15 (CPSR)
+	 
+	 if (result<0 ) {
+	 	newbit = selectbits(CPSR, 31, 31) | 1; //Change first bit to 1
+	 } else {
+		newbit = selectbits(CPSR, 31, 31) & 0; //Change first bit to 0
+	}
+
+	putinreg(state, 15, newbit * pow(2, 31));
+
+
 
   }
 
- void orr(int rn[], int op2[], int rd[]) {
- 	// Assuming OR just works on the last bit.
- 	int *op1 = fetchfromreg(rn);
- 	int result = op1[32 - 1]||op2[17 - 1]; // 6, 7
- 	int answer[32]; // 8
- 	answer[32 - 1] = result; // 9
- 	for (int i = 0; i<32-1; i++) { //10
- 		answer[i] = 0;
- 	}
- 	putinreg(rd, answer);
+ void orr(struct arm_State state, uint32_t rn, uint32_t op2, uint32_t rd) {
+ 	uint32_t op1 = fetchfromreg(state, rn);
+ 	uint32_t result = op1||op2; 
+ 	putinreg(state, rd, result);
 
   }
 
- void mov(int op2[], int rd[]) {
+ void mov(struct arm_State state, uint32_t op2, uint32_t rd) {
  	 // Move op2 to destination register
- 	putinreg(rd, op2);
+ 	putinreg(state, rd, op2);
 
- }*/
+ }
+
+ //Multiply Instructions
+
+void multiply(struct arm_State state, uint32_t rs, uint32_t rm, uint32_t rd) {
+	uint32_t arg1 = fetchfromreg(state, rm);
+	uint32_t arg2 = fetchfromreg(state, rs);
+	uint32_t result = arg1 * arg2 ; 
+	putinreg(state, rd, result);
+}
 
  
 
@@ -183,12 +216,13 @@ uint32_t zero = 0;
 	 i = 0;
 	 for ( i = 0; i < NUMBER_OF_REGISTERS; i++ ) {
 
-	    printf("%x" , ARM_State.reg[i] );
+	    printf("%x " , ARM_State.reg[i] );
 
 	 }
 
     printf("\n");
 
+        
 
 
 	 return EXIT_SUCCESS;
