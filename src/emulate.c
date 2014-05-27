@@ -103,14 +103,15 @@
  int main(int argc, char **argv) {
 
 
-	 /* initialise memory to 0 */
-	 int size = 16384;
-	 uint32_t zero = 0;
-	 uint32_t *Memory = malloc( size * sizeof(uint32_t) );
+	 /* Allocate memory array */
+	 const int memSize = 16384; //maximum number of instructions that can be stored.
+	 uint32_t *memory = malloc( memSize * sizeof(uint32_t) );
 
+	 /* initialise memory to 0 */
+	 uint32_t zero = 0;
 	 int i;
-	 for (i = 0; i < 16384; i++ ){
-		 Memory[i] = zero;
+	 for (i = 0; i < memSize; i++ ){
+		 memory[i] = zero;
 	 }
 
 	 /* file loading */
@@ -122,27 +123,30 @@
 	 }
      
      
-     /* Calculate file size then from the size, the number of 32-bit instructions */  
+     /* Calculate file size then from the size, the number of 32-bit instructions in the file */
+     const int bytesPerInstruction = 4;
      fseek( file, 0, SEEK_END );
-     int instructionsSize = ftell(file)/4;
+     int instructionsSize = ftell(file)/bytesPerInstruction;
      fseek( file, 0, SEEK_SET );
-	
-	 printf("%d \n", instructionsSize);
 
-	 
 
-	 fread(Memory, 4, instructionsSize, file );
+	 fread(memory, bytesPerInstruction, instructionsSize, file );
 
 	 /* file closing */
 	 fclose(file);
 
-	 i = 0;
-	 for ( i = 0; i < 16384; i++ ) {
 
-	    printf("%x" , Memory[i] );
+	// just to make sure its working.
+	 printf("%d \n", instructionsSize);
+
+	 i = 0;
+	 for ( i = 0; i < memSize; i++ ) {
+
+	    printf("%x " , memory[i] );
 
 	 }
 
+    printf("\n");
 
 
 
