@@ -9,14 +9,20 @@
 #include <math.h>
 #include <stdint.h>
 
-  typedef struct {
- 	uint32_t r[17];
- 	
- } Reg ;
+const int NUMBER_OF_REGISTERS = 17; // Number of registers
+const int memSize = 16384; //maximum number of instructions that can be stored.
+uint32_t zero = 0;
+
+//Struct representing the state of machine
+  struct arm_State {
+ 	uint32_t reg[17];
+	uint32_t memory[16384];	
+ }  ;
+
 
  
-
- /*int binaryToDec(int bin[4]) {
+/*
+ int binaryToDec(int bin[4]) {
  	//Doesn't work correctly yet
  	int answer = 0;
  	int power = 3;
@@ -26,7 +32,7 @@
  	}
  	return answer;
  }
-
+/*
  int *reverse(int arg[]) {
 
  }
@@ -102,16 +108,21 @@
  //Main Function
  int main(int argc, char **argv) {
 
+	//arm state initialised.
+	struct arm_State ARM_State;
 
-	 /* Allocate memory array */
-	 const int memSize = 16384; //maximum number of instructions that can be stored.
-	 uint32_t *memory = malloc( memSize * sizeof(uint32_t) );
+	int i;
+	//Initialise the registers to zero
+	for (int i = 0; i < NUMBER_OF_REGISTERS; i++) {
+		ARM_State.reg[i] = zero;
+	}
+
 
 	 /* initialise memory to 0 */
 	 uint32_t zero = 0;
-	 int i;
+
 	 for (i = 0; i < memSize; i++ ){
-		 memory[i] = zero;
+		 ARM_State.memory[i] = zero;
 	 }
 
 	 /* file loading */
@@ -130,7 +141,7 @@
      fseek( file, 0, SEEK_SET );
 
 
-	 fread(memory, bytesPerInstruction, instructionsSize, file );
+	 fread(ARM_State.memory, bytesPerInstruction, instructionsSize, file );
 
 	 /* file closing */
 	 fclose(file);
@@ -142,7 +153,15 @@
 	 i = 0;
 	 for ( i = 0; i < memSize; i++ ) {
 
-	    printf("%x " , memory[i] );
+	    printf("%x " , ARM_State.memory[i] );
+
+	 }
+
+    printf("\n");
+	 i = 0;
+	 for ( i = 0; i < NUMBER_OF_REGISTERS; i++ ) {
+
+	    printf("%x " , ARM_State.reg[i] );
 
 	 }
 
