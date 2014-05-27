@@ -20,6 +20,16 @@ uint32_t zero = 0;
 	uint32_t memory[16384];	
  }  ;
 
+//Helper method to write to register
+ void putinreg(struct arm_State state, uint32_t rd, uint32_t op2) {
+ 	state.reg[rd] = op2;	
+ }
+
+//Helper method to fetch from register
+ uint32_t fetchfromreg(struct arm_State state, uint32_t rn) {
+	return state.reg[rn];
+ }
+
 //Helper method for selecting bits
  uint32_t selectbits(uint32_t i, int first, int last) {
 	uint32_t mask = 0;
@@ -40,50 +50,48 @@ uint32_t zero = 0;
         return i;
  }
 
- //Helper method to fetch from register
- uint32_t fetchfromreg(struct arm_State state, uint32_t rn) {
-	return state.reg[rn];
- }
+ 
 
-//Helper method to write to register
- void putinreg(struct arm_State state, uint32_t rd, uint32_t op2) {
- 	state.reg[rd] = op2;	
- }
+ //Data Processing Instructions
 
-  //Data Processing Instructions
- void and(struct arm_State state, uint32_t rn, uint32_t op2, uint32_t r) {
+void and(struct arm_State state, uint32_t rn, uint32_t op2, int r) {
  	state.reg[r] = rn & op2;
  }
 
- void eor(struct arm_State state, uint32_t rn, uint32_t op2, uint32_t r) {
+ void eor(struct arm_State state, uint32_t rn, uint32_t op2, int r) {
  	state.reg[r] = rn ^ op2;
  }
 
- void sub(struct arm_State state, uint32_t rn, uint32_t op2, uint32_t r) {
- 	state.reg[r] = rn - op2;
+ void sub(struct arm_State state, uint32_t rn, uint32_t op2, int r) {
+ 	uint32_t one = 1;
+ 	uint32_t result = ~op2 + one;
+ 	state.reg[r] = result;
  }
 
- void rsb(struct arm_State state, uint32_t rn, uint32_t op2, uint32_t r) {
- 	state.reg[r] = op2 - rn;
- }
-
- void add(struct arm_State state, uint32_t rn, uint32_t op2, uint32_t r) {
- 	state.reg[r] = rn + op2;
- }
- void cmp(struct arm_State state, uint32_t rn,  uint32_t op2) {
-	// As SUB but result not written
+/*
+ void teq(struct arm_State state, uint32_t rn, uint32_t op2) {
+	 // As EOR but result not written
  	uint32_t op1 = fetchfromreg(state, rn);
- 	uint32_t result = op1 - op2;
-	uint32_t newbit = 0;
-        uint32_t CPSR = fetchfromreg(state, 15); //Fetch contents of reg 15 (CPSR)
+ 	uint32_t result = op1 ^ op2; // 4, 5
+  }
+*/
+ void cmp(struct arm_State state, uint32_t rn,  uint32_t op2) {
+	 // As SUB but result not written
+ 	 uint32_t op1 = fetchfromreg(state, rn);
+ 	 uint32_t result = op1 - op2;
+	 uint32_t newbit = 0;
+         uint32_t CPSR = fetchfromreg(state, 15); //Fetch contents of reg 15 (CPSR)
 	 
-	if (result<0 ) {
+	 if (result<0 ) {
 	 	newbit = selectbits(CPSR, 31, 31) | 1; //Change first bit to 1
-	} else {
+	 } else {
 		newbit = selectbits(CPSR, 31, 31) & 0; //Change first bit to 0
 	}
 
 	putinreg(state, 15, newbit * pow(2, 31));
+
+
+
   }
 
  void orr(struct arm_State state, uint32_t rn, uint32_t op2, uint32_t rd) {
@@ -98,15 +106,6 @@ uint32_t zero = 0;
  	putinreg(state, rd, op2);
 
  }
-
-/*
- void teq(struct arm_State state, uint32_t rn, uint32_t op2) {
-	 // As EOR but result not written
- 	uint32_t op1 = fetchfromreg(state, rn);
- 	uint32_t result = op1 ^ op2; // 4, 5
-  }
-*/
- 
 
  //Multiply Instructions
 
