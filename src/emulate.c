@@ -9,92 +9,79 @@
 #include <math.h>
 #include <stdint.h>
 
-  typedef struct {
- 	uint32_t r[17];
- 	
- } Reg ;
+//This macro makes it easier to reference the PC, leading to prettier code.
+#define PC state.reg[15]
+
+const int NUMBER_OF_REGISTERS = 17; // Number of registers
+const int memSize = 16384; //maximum number of instructions that can be stored.
+uint32_t zero = 0;
+
+//Struct representing the state of machine
+  struct arm_State {
+ 	uint32_t reg[17];
+	uint32_t memory[16384];	
+ }  ;
 
  
 
- /*int binaryToDec(int bin[4]) {
- 	//Doesn't work correctly yet
- 	int answer = 0;
- 	int power = 3;
- 	for (int i = 0; i<4; i++ ) {
- 		answer = answer + (bin[i] * pow(2, power )) ;
- 		power--;
- 	}
- 	return answer;
- }
-
- int *reverse(int arg[]) {
-
- }
+ //enumeration of all operation mnemonics for help with decoding and execution.
+ enum mnemonic {  AND, EOR, SUB,
+                  RSB, ADD, TST,
+                  TEQ, CMP, ORR,
+                  MOV, MUL, MLA,
+                  LDR, STR, BEQ,
+                  BNE, BGE, BLT,
+                  BGT, BLE, B,
+                  LSL, ANDEQ };
 
 
- int *decToBinary(int i) {
-	 int answer[32]; // 1
-	 int *p;
-	 int j = 0;
-	 while (i>0) {
-        answer[j] = i % 2 ; 
-        i = floor(i/2);
-        j++;
-	 } 	
-	 p = answer;
-	 return p;
- } 
+//Struct representing decoded instruction.
+    struct decodedInstruction {
+        enum mnemonic operation;
+        uint32_t Rd;
+        uint32_t Rn;
+        uint32_t Rm;
+        uint32_t Op2;
+        int pending;
+    } ;
 
+//Struct representing fetched instruction.
+    struct fetchedInstruction {
+        uint32_t binaryInstruction;
+        int pending;
+    } ;
 
- void putinreg(int rd[], int *arg) {
- 	
- 	
- }
-
- int *fetchfromreg(int rn[]) {
-
- }
 
  
+//function to increment PC to next instruction address.
+void incrementPC( struct arm_State state ){
 
- void teq(int rn[4], int op2[12]) {
-	 // As EOR but result not written
- 	// Assuming EOR just works on the last bit
- 	int *op1 = fetchfromreg(rn);
- 	int result = op1[32 - 1] ^ op2[17 - 1]; // 4, 5
-  }
+    PC += 1;//PC is a macro defined earlier
 
- void cmp(int rn[], int op2[]) {
-	 // As SUB but result not written
- 	 int arg1 = binaryToDec(fetchfromreg(rn));
- 	 int arg2 = binaryToDec(op2);
- 	 int *result = decToBinary(arg1 - arg2);
+}
 
-  }
+//function to fetch the instruction at the current instruction address stored in PC.
+void fetchNextInstruction(struct arm_State state, struct fetchedInstruction fetched){
 
- void orr(int rn[], int op2[], int rd[]) {
- 	// Assuming OR just works on the last bit.
- 	int *op1 = fetchfromreg(rn);
- 	int result = op1[32 - 1]||op2[17 - 1]; // 6, 7
- 	int answer[32]; // 8
- 	answer[32 - 1] = result; // 9
- 	for (int i = 0; i<32-1; i++) { //10
- 		answer[i] = 0;
- 	}
- 	putinreg(rd, answer);
-
-  }
-
- void mov(int op2[], int rd[]) {
- 	 // Move op2 to destination register
- 	putinreg(rd, op2);
-
- }*/
-
+    fetched.binaryInstruction = state.memory[ PC ]; //PC is a macro defined earlier.
+    fetched.pending = 1;
+    
+}
  
+//function to execute decoded instructions then clear decoded instructions pending flag.
+void execute(struct arm_State state, struct decodedInstruction decoded){
 
- 
+    enum mnemonic op = decoded.operation;
+    switch (op){
+    case AND: and(state, decoded.Rn, decoded.Op2, decoded.Rd); break;
+    default: break;
+    }
 
+}
+
+//function to decoded a previously fetched instrcution.
+void decode(struct fetchedInstruction fetched){
+}
  
 
  
@@ -102,16 +89,21 @@
  //Main Function
  int main(int argc, char **argv) {
 
+	//arm state initialised.
+	struct arm_State ARM_State;
 
-	 /* Allocate memory array */
-	 const int memSize = 16384; //maximum number of instructions that can be stored.
-	 uint32_t *memory = malloc( memSize * sizeof(uint32_t) );
+	int i;
+	//Initialise the registers to zero
+	for (int i = 0; i < NUMBER_OF_REGISTERS; i++) {
+		ARM_State.reg[i] = zero;
+	}
+
 
 	 /* initialise memory to 0 */
 	 uint32_t zero = 0;
-	 int i;
+
 	 for (i = 0; i < memSize; i++ ){
-		 memory[i] = zero;
+		 ARM_State.memory[i] = zero;
 	 }
 
 	 /* file loading */
@@ -129,58 +121,46 @@
      int instructionsSize = ftell(file)/bytesPerInstruction;
      fseek( file, 0, SEEK_SET );
 
-
-	 fread(memory, bytesPerInstruction, instructionsSize, file );
+     //Load the binary data into the memory array.
+	 fread(ARM_State.memory, bytesPerInstruction, instructionsSize, file );
 
 	 /* file closing */
 	 fclose(file);
 
 
-	 //just to make sure its working.
-	 printf("%d \n", instructionsSize);
-
-	 i = 0;
-	 for ( i = 0; i < memSize; i++ ) {
-	    printf("%x " , memory[i] );
-	 }
-
-     printf("\n");
-
-
-
 
     //Pipeline execution of instructions.
+    //Start with no instructions decoded and no instructions fetched.
+    struct fetchedInstruction fetched;
+    struct decodedInstruction decoded;
+    fetched.pending = 0;
+    decoded.pending = 0;    
 
-    //start pipeline at first byte of file.
-    int memoryAddress = 0;
-    
-    //initial filling of pipeline
-    
     
     //main pipeline loop
-     while ( program still running ) {
+     while ( 1 ) {
 
-        int fetchedInstruction = 0;
 
-        if ( there's an instruction to execute ) {
 
-            execute(decodedInstruction);
+        if ( decoded.pending == 1 ) {
+
+            execute(ARM_State, decoded);
 
         }
 
-        if ( there's an instruction to decode ) {
+        if ( fetched.pending == 1 ) {
 
-            decode(fetchedInstruction);
+            decode(fetched);
             
         }
 
-        if ( there's an instruction to be fetched ) {
+        if ( PC <  memSize) {
 
-            fetchNextInstruction(memoryAddress);
+            fetchNextInstruction(ARM_State, fetched);
         }
 
 
-
+        incrementPC(ARM_State);
 
 
 
