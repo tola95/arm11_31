@@ -29,8 +29,16 @@ uint32_t zero = 0;
 
  void sub(struct arm_State state, uint32_t rn, uint32_t op2, int r) {
  	uint32_t one = 1;
- 	uint32_t result = ~op2 + one;
+ 	uint32_t result = ~op2 + one + rn;
  	state.reg[r] = result;
+ }
+
+ void rsb(struct arm_State state, uint32_t rn, uint32_t op2, int r) {
+ 	state.reg[r] = 
+ }
+
+ void add(struct arm_State state, uint32_t rn, uint32_t op2, int r) {
+ 	state.reg[r] = rn + op2;
  }
 
 
