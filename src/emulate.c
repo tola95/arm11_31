@@ -104,8 +104,9 @@
 
 
 	 /* initialise memory to 0 */
-	 uint32_t Memory[16384];
+	 int size = 16384;
 	 uint32_t zero = 0;
+	 uint32_t *Memory = malloc( size * sizeof(uint32_t) );
 
 	 int i;
 	 for (i = 0; i < 16384; i++ ){
@@ -122,9 +123,9 @@
      
      
      /* Calculate file size then from the size, the number of 32-bit instructions */  
-     struct stat st;
-     fstat((open(file, O_RDONLY)), &st);
-     int instructionsSize = st.st_size/4;
+     fseek( file, 0, SEEK_END );
+     int instructionsSize = ftell(file)/4;
+     fseek( file, 0, SEEK_SET );
 	
 	 printf("%d \n", instructionsSize);
 
@@ -134,6 +135,13 @@
 
 	 /* file closing */
 	 fclose(file);
+
+	 i = 0;
+	 for ( i = 0; i < 16384; i++ ) {
+
+	    printf("%x" , Memory[i] );
+
+	 }
 
 
 
