@@ -53,6 +53,21 @@ uint32_t zero = 0;
  
 
  //Data Processing Instructions
+
+void and(struct arm_State state, uint32_t rn, uint32_t op2, int r) {
+ 	state.reg[r] = rn & op2;
+ }
+
+ void eor(struct arm_State state, uint32_t rn, uint32_t op2, int r) {
+ 	state.reg[r] = rn ^ op2;
+ }
+
+ void sub(struct arm_State state, uint32_t rn, uint32_t op2, int r) {
+ 	uint32_t one = 1;
+ 	uint32_t result = ~op2 + one;
+ 	state.reg[r] = result;
+ }
+
 /*
  void teq(struct arm_State state, uint32_t rn, uint32_t op2) {
 	 // As EOR but result not written
