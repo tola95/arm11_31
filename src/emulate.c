@@ -136,21 +136,90 @@
 	 fclose(file);
 
 
-	// just to make sure its working.
+	 //just to make sure its working.
 	 printf("%d \n", instructionsSize);
 
 	 i = 0;
 	 for ( i = 0; i < memSize; i++ ) {
-
 	    printf("%x " , memory[i] );
-
 	 }
 
-    printf("\n");
+     printf("\n");
 
 
 
+
+    //Pipeline execution of instructions.
+
+    //start pipeline at first byte of file.
+    int memoryAddress = 0;
+    
+    //initial filling of pipeline
+    
+    
+    //main pipeline loop
+     while ( program still running ) {
+
+        int fetchedInstruction = 0;
+
+        if ( there's an instruction to execute ) {
+
+            execute(decodedInstruction);
+
+        }
+
+        if ( there's an instruction to decode ) {
+
+            decode(fetchedInstruction);
+            
+        }
+
+        if ( there's an instruction to be fetched ) {
+
+            fetchNextInstruction(memoryAddress);
+        }
+
+
+
+
+
+
+
+     
+     }
+     
+
+    
+
+
+    
 	 return EXIT_SUCCESS;
 
  }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
