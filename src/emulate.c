@@ -56,19 +56,22 @@ uint32_t zero = 0;
  	state.reg[rd] = op2;	
  }
  
- void and(struct arm_State state, uint32_t rn, uint32_t op2, int r) {
+ uint32_t and(struct arm_State state, uint32_t rn, uint32_t op2, int r) {
  	state.reg[r] = rn & op2;
+ 	return state.reg[r];
  }
-/*
- int *reverse(int arg[]) {
 
 
- void eor(struct arm_State state, uint32_t rn, uint32_t op2, int r) {
+
+
+ uint32_t eor(struct arm_State state, uint32_t rn, uint32_t op2, int r) {
  	state.reg[r] = rn ^ op2;
+ 	return state.reg[r];
  }
 
- void sub(struct arm_State state, uint32_t rn, uint32_t op2, int r) {
+ uint32_t sub(struct arm_State state, uint32_t rn, uint32_t op2, int r) {
  	state.reg[r] = rn - op2;
+ 	return state.reg[r];
  }
 
  int *decToBinary(int i) {
@@ -84,16 +87,21 @@ uint32_t zero = 0;
 	 return p;
  } 
 
- void rsb(struct arm_State state, uint32_t rn, uint32_t op2, int r) {
+ uint32_t rsb(struct arm_State state, uint32_t rn, uint32_t op2, int r) {
  	state.reg[r] = op2 - rn;
+ 	return state.reg[r];
  }
 
 
- void add(struct arm_State state, uint32_t rn, uint32_t op2, int r) {
+ uint32_t add(struct arm_State state, uint32_t rn, uint32_t op2, int r) {
  	state.reg[r] = rn + op2;
+ 	return state.reg[r];
  }
 
- int *fetchfromreg(int rn[]) {
+ void tst(struct arm_State state, uint32_t rn, uint32_t op2, int r) {
+	 state.reg[r] = state.reg[rn] & op2;
+ }
+
 
 //Helper method to fetch from register
  uint32_t fetchfromreg(struct arm_State state, uint32_t rn) {
