@@ -9,79 +9,68 @@
 #include <math.h>
 #include <stdint.h>
 
+//This macro makes it easier to reference the PC, leading to prettier code.
+#define PC state.reg[15]
 
 const int NUMBER_OF_REGISTERS = 17; // Number of registers
 const int memSize = 16384; //maximum number of instructions that can be stored.
 uint32_t zero = 0;
 
+
 //Struct representing the state of machine
   struct arm_State {
- 	uint32_t reg[NUMBER_OF_REGISTERS];
-	uint32_t memory[memSize];
+ 	uint32_t reg[17];
+	uint32_t memory[16384];	
  }  ;
 
-void putinreg(struct arm_State state, uint32_t rd, uint32_t op2) {
-	state.reg[rd] = op2;
-}
 
-uint32_t fetchfromreg(struct arm_State state, uint32_t rn) {
-	return state.reg[rn];
-}
+//enumeration of all operation mnemonics for help with decoding and execution.
+ enum mnemonic {  AND, EOR, SUB,
+                  RSB, ADD, TST,
+                  TEQ, CMP, ORR,
+                  MOV, MUL, MLA,
+                  LDR, STR, BEQ,
+                  BNE, BGE, BLT,
+                  BGT, BLE, B,
+                  LSL, ANDEQ };
 
-void teq(struct arm_State state, uint32_t rn, uint32_t op2) {
-	 // As EOR but result not written
-	// Assuming EOR just works on the last bit
-	uint32_t op1 = fetchfromreg(state, rn);
-	uint32_t result = op1[32 - 1] ^ op2[17 - 1]; // 4, 5
+//Struct representing decoded instruction.
+    struct decodedInstruction {
+        enum mnemonic operation;
+        uint32_t Rd;
+        uint32_t Rn;
+        uint32_t Rm;
+        uint32_t Op2;
+        int pending;
+    } ;
+
+//Struct representing fetched instruction.
+    struct fetchedInstruction {
+        uint32_t binaryInstruction;
+        int pending;
+    } ;
+
+                  
+//Helper method to write to register
+ void putinreg(struct arm_State state, uint32_t rd, uint32_t op2) {
+ 	state.reg[rd] = op2;	
  }
-
-uint32_t rsb(struct arm_State state, uint32_t rn, uint32_t op2) {
-	// As for SUB, but the operation is commuted.
-	uint32_t op1 = fetchfromreg(state, rn);
-	uint32_t result = op2 - op1;
-	return result;
-}
-
-uint32_t add(struct arm_State state, uint32_t rn, uint32_t op2) {
-	// Adds a specified 32-bit binary number number to the register RN
-	uint32_t op1 = fetchfromreg(state, rn);
-	uint32_t result = op2 + op1;
-	return result;
-}
-
-void tst(struct arm_State state, uint32_t rn, uint32_t op2) {
-	// As AND but result not written
-	uint32_t op1 = fetchfromreg(state, rn);
-	uint32_t result = op1 & op2;
-}
-
-/*
- int binaryToDec(int bin[4]) {
- 	//Doesn't work correctly yet
- 	int answer = 0;
- 	int power = 3;
- 	for (int i = 0; i<4; i++ ) {
- 		answer = answer + (bin[i] * pow(2, power )) ;
- 		power--;
- 	}
- 	return answer;
+ 
+ void and(struct arm_State state, uint32_t rn, uint32_t op2, int r) {
+ 	state.reg[r] = rn & op2;
  }
 /*
  int *reverse(int arg[]) {
->>>>>>> origin/master
 
+
+ void eor(struct arm_State state, uint32_t rn, uint32_t op2, int r) {
+ 	state.reg[r] = rn ^ op2;
  }
 
- int sub(int rn, int op2) {
-	 // ToDo : Function not yet implemented...
- 	 return rn - op2 ;
-  }
-
- int rsb(int rn, int op2) {
-
-<<<<<<< HEAD
+ void sub(struct arm_State state, uint32_t rn, uint32_t op2, int r) {
+ 	state.reg[r] = rn - op2;
  }
-=======
+
  int *decToBinary(int i) {
 	 int answer[32]; // 1
 	 int *p;
@@ -94,87 +83,131 @@ void tst(struct arm_State state, uint32_t rn, uint32_t op2) {
 	 p = answer;
 	 return p;
  } 
->>>>>>> origin/master
 
- int add(int rn, int op2) {
-	Reg[rn] = bintodecimal(Reg[rn]);
-	op2 = bintodecimal(op2);
-	int rd = dectobinary(op2 + rn);
- 	 return rd;
-  }
-
- void tst(int rn, int op2) {
-	 // As AND, but not written
-	 uint32_t op1 = fetchfromreg(Reg[rn]);
-	 uint32_t result = op1 ^ op2;
+ void rsb(struct arm_State state, uint32_t rn, uint32_t op2, int r) {
+ 	state.reg[r] = op2 - rn;
  }
 
-<<<<<<< HEAD
- void putinreg(int rd, int *arg) {
- 	for (int i=0; i<32; i++) {
- 		Reg[bintodecimal(rd)][i] = arg;
- 	}
- 	
- }
 
- uint32_t fetchfromreg(int rn) {
- 	int arg = bintodecimal(Reg[rn]);
- 	uint32_t *p = Reg[arg];
- 	return p;
-
- void putinreg(int rd[], int *arg) {
- 	
- 	
+ void add(struct arm_State state, uint32_t rn, uint32_t op2, int r) {
+ 	state.reg[r] = rn + op2;
  }
 
  int *fetchfromreg(int rn[]) {
 
-
+//Helper method to fetch from register
+ uint32_t fetchfromreg(struct arm_State state, uint32_t rn) {
+	return state.reg[rn];
  }
 
+//Helper method for selecting bits
+ uint32_t selectbits(uint32_t i, int first, int last) {
+	uint32_t mask = 0;
+	int count = first;
 
+        //Create the 32 bit mask
+	while (count>=last) {
+		mask = mask + 1  * pow(2, count);
+		count--;
+	}
+        
+	//& operation to extract the required bits
+	i &= mask;
 
- void cmp(int rn, int op2[]) {
+	//Extract the bits by shift right by 'last' amount of bits
+	i >>= last;
+
+        return i;
+ }
+
+ 
+
+ void cmp(struct arm_State state, uint32_t rn,  uint32_t op2) {
+ 
 	 // As SUB but result not written
- 	 int arg1 = bintodecimal(fetchfromreg(Reg[rn]));
- 	 int arg2 = bintodecimal(op2);
- 	 int *result = dectobinary(arg1 - arg2);
-  }
+ 	 uint32_t op1 = fetchfromreg(state, rn);
+ 	 uint32_t result = op1 - op2;
+	 uint32_t newbit = 0;
+         uint32_t CPSR = fetchfromreg(state, 15); //Fetch contents of reg 15 (CPSR)
+	 
+	 if (result<0 ) {
+	 	newbit = selectbits(CPSR, 31, 31) | 1; //Change first bit to 1
+	 } else {
+		newbit = selectbits(CPSR, 31, 31) & 0; //Change first bit to 0
+	}
 
- void orr(int rn[], int op2[], int rd[]) {
- 	// Assuming OR just works on the last bit.
- 	int *op1 = fetchfromreg(rn);
- 	int result = op1[32 - 1]||op2[17 - 1]; // 6, 7
- 	int answer[32]; // 8
- 	answer[32 - 1] = result; // 9
- 	for (int i = 0; i<32-1; i++) { //10
- 		answer[i] = 0;
- 	}
- 	putinreg(rd, answer);
+	putinreg(state, 15, newbit * pow(2, 31));
 
   }
 
- void mov(int op2[], int rd[]) {
+ void orr(struct arm_State state, uint32_t rn, uint32_t op2, uint32_t rd) {
+ 	uint32_t op1 = fetchfromreg(state, rn);
+ 	uint32_t result = op1||op2; 
+ 	putinreg(state, rd, result);
+
+  }
+
+ void mov(struct arm_State state, uint32_t op2, uint32_t rd) {
  	 // Move op2 to destination register
- 	putinreg(rd, op2);
+ 	putinreg(state, rd, op2);
+ }
 
- }*/
+ //Multiply Instructions
+
+void multiply(struct arm_State state, uint32_t rs, uint32_t rm, uint32_t rd) {
+	uint32_t arg1 = fetchfromreg(state, rm);
+	uint32_t arg2 = fetchfromreg(state, rs);
+	uint32_t result = arg1 * arg2 ; 
+	putinreg(state, rd, result);
+}
+
+
 
  
 
- 
+//function to increment PC to next instruction address.
+void incrementPC( struct arm_State state ){
 
- 
+    PC += 1;//PC is a macro defined earlier
 
+}
+
+
+//function to fetch the instruction at the current instruction address stored in PC.
+void fetchNextInstruction(struct arm_State state, struct fetchedInstruction fetched){
+
+    fetched.binaryInstruction = state.memory[ PC ]; //PC is a macro defined earlier.
+    fetched.pending = 1;
+    
+}
  
+//function to execute decoded instructions then clear decoded instructions pending flag.
+void execute(struct arm_State state, struct decodedInstruction decoded){
+
+    enum mnemonic op = decoded.operation;
+    switch (op){
+    case AND: and(state, decoded.Rn, decoded.Op2, decoded.Rd); break;
+    default: break;
+    }
+    
+}
+
+
+
+//function to decoded a previously fetched instrcution.
+void decode(struct fetchedInstruction fetched){
+}
+
+
 
  //Main Function
-
  int main(int argc, char **argv) {
 
 	//arm state initialised.
 	struct arm_State ARM_State;
 
+
+	//Initialise the registers to zero
 	int i;
 	//Initialise the registers to zero
 	for (int i = 0; i < NUMBER_OF_REGISTERS; i++) {
@@ -204,7 +237,7 @@ void tst(struct arm_State state, uint32_t rn, uint32_t op2) {
      int instructionsSize = ftell(file)/bytesPerInstruction;
      fseek( file, 0, SEEK_SET );
 
-
+     //Load the binary data into the memory array.
 	 fread(ARM_State.memory, bytesPerInstruction, instructionsSize, file );
 
 	 /* file closing */
@@ -214,10 +247,16 @@ void tst(struct arm_State state, uint32_t rn, uint32_t op2) {
 	// just to make sure its working.
 	 printf("%d \n", instructionsSize);
 
-	 i = 0;
-	 for ( i = 0; i < memSize; i++ ) {
+    //Pipeline execution of instructions.
+    //Start with no instructions decoded and no instructions fetched.
+    struct fetchedInstruction fetched;
+    struct decodedInstruction decoded;
+    fetched.pending = 0;
+    decoded.pending = 0;    
 
-	    printf("%x " , ARM_State.memory[i] );
+    
+    //main pipeline loop.
+     while ( 1 ) {
 
 	 }
 
@@ -225,15 +264,57 @@ void tst(struct arm_State state, uint32_t rn, uint32_t op2) {
 	 i = 0;
 	 for ( i = 0; i < NUMBER_OF_REGISTERS; i++ ) {
 
-	    printf("%x " , ARM_State.reg[i] );
+        if ( decoded.pending == 1 ) {
 
-	 }
+            execute(ARM_State, decoded);
 
-    printf("\n");
+        }
+
+        if ( fetched.pending == 1 ) {
+
+            decode(fetched);
+            
+        }
+
+        if ( ARM_State.reg[15] <  memSize) {
+
+            fetchNextInstruction(ARM_State, fetched);
+        }
 
 
+        incrementPC(ARM_State);
+
+     
+     }
+     
 
 	 return EXIT_SUCCESS;
 
  }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
