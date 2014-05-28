@@ -9,40 +9,66 @@
 #include <math.h>
 #include <stdint.h>
 
-  typedef struct {
- 	uint32_t r[17];
- 	
-  } Reg ;
 
- 
+const int NUMBER_OF_REGISTERS = 17; // Number of registers
+const int memSize = 16384; //maximum number of instructions that can be stored.
+uint32_t zero = 0;
 
- int dectobinary(int n) {  /* Method to convert decimal to binary.*/
-     int result = 0,
-    		 i = 1,
-    		 r = 0;
-     while (n != 0) {
-         r = n % 2;
-         n /= 2;
-         result += r*i;
-         i *= 10;
-     }
-     return result;
+//Struct representing the state of machine
+  struct arm_State {
+ 	uint32_t reg[NUMBER_OF_REGISTERS];
+	uint32_t memory[memSize];
+ }  ;
+
+void putinreg(struct arm_State state, uint32_t rd, uint32_t op2) {
+	state.reg[rd] = op2;
+}
+
+uint32_t fetchfromreg(struct arm_State state, uint32_t rn) {
+	return state.reg[rn];
+}
+
+void teq(struct arm_State state, uint32_t rn, uint32_t op2) {
+	 // As EOR but result not written
+	// Assuming EOR just works on the last bit
+	uint32_t op1 = fetchfromreg(state, rn);
+	uint32_t result = op1[32 - 1] ^ op2[17 - 1]; // 4, 5
  }
 
- int bintodecimal(int n) {  /* Method to convert binary to decimal.*/
-     int result = 0,
-    		 i = 1,
-    		 r = 0;
-     while (n != 0) {
-         r = n % 10;
-         n /= 10;
-         result += r*i;
-         i *= 2;
-     }
-     return result;
- }
+uint32_t rsb(struct arm_State state, uint32_t rn, uint32_t op2) {
+	// As for SUB, but the operation is commuted.
+	uint32_t op1 = fetchfromreg(state, rn);
+	uint32_t result = op2 - op1;
+	return result;
+}
 
- int *reverse(int arg) {
+uint32_t add(struct arm_State state, uint32_t rn, uint32_t op2) {
+	// Adds a specified 32-bit binary number number to the register RN
+	uint32_t op1 = fetchfromreg(state, rn);
+	uint32_t result = op2 + op1;
+	return result;
+}
+
+void tst(struct arm_State state, uint32_t rn, uint32_t op2) {
+	// As AND but result not written
+	uint32_t op1 = fetchfromreg(state, rn);
+	uint32_t result = op1 & op2;
+}
+
+/*
+ int binaryToDec(int bin[4]) {
+ 	//Doesn't work correctly yet
+ 	int answer = 0;
+ 	int power = 3;
+ 	for (int i = 0; i<4; i++ ) {
+ 		answer = answer + (bin[i] * pow(2, power )) ;
+ 		power--;
+ 	}
+ 	return answer;
+ }
+/*
+ int *reverse(int arg[]) {
+>>>>>>> origin/master
 
  }
 
@@ -53,7 +79,22 @@
 
  int rsb(int rn, int op2) {
 
+<<<<<<< HEAD
  }
+=======
+ int *decToBinary(int i) {
+	 int answer[32]; // 1
+	 int *p;
+	 int j = 0;
+	 while (i>0) {
+        answer[j] = i % 2 ; 
+        i = floor(i/2);
+        j++;
+	 } 	
+	 p = answer;
+	 return p;
+ } 
+>>>>>>> origin/master
 
  int add(int rn, int op2) {
 	Reg[rn] = bintodecimal(Reg[rn]);
@@ -68,6 +109,7 @@
 	 uint32_t result = op1 ^ op2;
  }
 
+<<<<<<< HEAD
  void putinreg(int rd, int *arg) {
  	for (int i=0; i<32; i++) {
  		Reg[bintodecimal(rd)][i] = arg;
@@ -79,16 +121,18 @@
  	int arg = bintodecimal(Reg[rn]);
  	uint32_t *p = Reg[arg];
  	return p;
+
+ void putinreg(int rd[], int *arg) {
+ 	
+ 	
  }
 
- 
+ int *fetchfromreg(int rn[]) {
 
- void teq(int rn[4], int op2[12]) {
-	 // As EOR but result not written
- 	// Assuming EOR just works on the last bit
- 	uint32_t op1 = fetchfromreg(rn);
- 	uint32_t result = op1[32 - 1] ^ op2[17 - 1]; // 4, 5
-  }
+
+ }
+
+
 
  void cmp(int rn, int op2[]) {
 	 // As SUB but result not written
@@ -114,7 +158,7 @@
  	 // Move op2 to destination register
  	putinreg(rd, op2);
 
- }
+ }*/
 
  
 
@@ -125,23 +169,70 @@
  
 
  //Main Function
- int main(void) {
-/*
-	 We have to do the memory (array of arrays (16384 X 32 bits))
-	 We have to do the registers (array of arrays 17 X 32 bits)
-*/
-	 for(int i=0; i<17; i++) { // 11
-		for (int j=0; j<32; j++) { //12
-			Reg[i][j] = 0;
-		}
+
+ int main(int argc, char **argv) {
+
+	//arm state initialised.
+	struct arm_State ARM_State;
+
+	int i;
+	//Initialise the registers to zero
+	for (int i = 0; i < NUMBER_OF_REGISTERS; i++) {
+		ARM_State.reg[i] = zero;
+	}
+
+
+	 /* initialise memory to 0 */
+	 uint32_t zero = 0;
+
+	 for (i = 0; i < memSize; i++ ){
+		 ARM_State.memory[i] = zero;
+	 }
+
+	 /* file loading */
+	 FILE *file = fopen(argv[1], "rb");
+
+	 if (file == NULL){
+		 perror("Error: Could not open file.");
+		 exit(EXIT_FAILURE);
 	 }
      
-/*
-	 Check cond (first four bits) and S fields and set CPSR flag accordingly
-	 Check Immediate Operand and update Operand 2 acordingly.
-	 Check Opcode and 
-*/
-	 printf("works\n");
+     
+     /* Calculate file size then from the size, the number of 32-bit instructions in the file */
+     const int bytesPerInstruction = 4;
+     fseek( file, 0, SEEK_END );
+     int instructionsSize = ftell(file)/bytesPerInstruction;
+     fseek( file, 0, SEEK_SET );
+
+
+	 fread(ARM_State.memory, bytesPerInstruction, instructionsSize, file );
+
+	 /* file closing */
+	 fclose(file);
+
+
+	// just to make sure its working.
+	 printf("%d \n", instructionsSize);
+
+	 i = 0;
+	 for ( i = 0; i < memSize; i++ ) {
+
+	    printf("%x " , ARM_State.memory[i] );
+
+	 }
+
+    printf("\n");
+	 i = 0;
+	 for ( i = 0; i < NUMBER_OF_REGISTERS; i++ ) {
+
+	    printf("%x " , ARM_State.reg[i] );
+
+	 }
+
+    printf("\n");
+
+
+
 	 return EXIT_SUCCESS;
 
  }
