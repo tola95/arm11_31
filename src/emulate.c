@@ -37,7 +37,6 @@ uint32_t *memPtr;
 //This method is called by the main method to initialise all the memory.
 void initMem() {
   memPtr = (uint32_t *) calloc(MEM, sizeof(uint32_t));
-
 } 
 
 //Initialised registers to 0 and assigned each
@@ -61,6 +60,44 @@ Register ARMReg[REG] = {
   {"PC", 0},
   {"CPSR", 0}
 };
+
+//enumeration of all operation mnemonics for help with decoding and execution.
+enum mnemonic {  AND, EOR, SUB,
+                 RSB, ADD, TST,
+                 TEQ, CMP, ORR,
+                 MOV, MUL, MLA,
+                 LDR, STR, BEQ,
+                 BNE, BGE, BLT,
+                 BGT, BLE, B,
+                 LSL, ANDEQ };
+
+//Struct representing decoded instruction.
+struct decodedInstruction {
+        enum mnemonic operation;
+        uint32_t rd;
+        uint32_t rn;
+        uint32_t rm;
+        uint32_t op2;
+        uint32_t i;
+        uint32_t a;
+        uint32_t s;
+        uint32_t cond;
+        enum bool pending;
+} ;
+    
+//Struct representing fetched instruction.
+struct fetchedInstruction {
+        uint32_t binaryInstruction;
+        enum bool pending;
+} ;
+    
+struct decodedInstruction *decoded;
+struct fetchedInstruction *fetched;
+
+void initdf(void) {
+      decoded = malloc(sizeof(struct decodedInstruction));
+      fetched = malloc(sizeof(struct fetchedInstruction));    
+}
 
 void printBits1(uint32_t x) { 
   int i;
@@ -136,6 +173,17 @@ uint32_t masking(uint32_t inst, int left, int right) {
   return inst;
 }
 
+uint32_t rotate(uint32_t imm, uint32_t n) {
+  while (n > 0) {
+    uint32_t zerobit = 1 & imm;
+    zerobit <<= 31;
+    imm >>= 1;
+    imm += zerobit;
+    n --;
+  }
+  return imm;
+}
+
 //Opcode and operation for when operand2 is not an immediate constant.
 uint32_t lsl(uint32_t rm, uint32_t shift) {
   return rm << shift;
@@ -145,47 +193,57 @@ uint32_t lsr(uint32_t rm, uint32_t shift) {
   return rm >> shift;
 }
 
-//enumeration of all operation mnemonics for help with decoding and execution.
-enum mnemonic {  AND, EOR, SUB,
-                 RSB, ADD, TST,
-                 TEQ, CMP, ORR,
-                 MOV, MUL, MLA,
-                 LDR, STR, BEQ,
-                 BNE, BGE, BLT,
-                 BGT, BLE, B,
-                 LSL, ANDEQ };
+uint32_t asr(uint32_t rmVal, uint32_t shift) {
+  uint32_t bit31 = rmVal & (1 << 31);
+  while (shift > 0) {
+    rmVal >>= 1;
+    rmVal += bit31;
+    shift --;
+  }
+  return rmVal;
+}
 
-//Struct representing decoded instruction.
-struct decodedInstruction {
-        enum mnemonic operation;
-        uint32_t rd;
-        uint32_t rn;
-        uint32_t rm;
-        uint32_t op2;
-        uint32_t i;
-        uint32_t a;
-        uint32_t s;
-        uint32_t cond;
-        enum bool pending;
-} ;
-    
-//Struct representing fetched instruction.
-struct fetchedInstruction {
-        uint32_t binaryInstruction;
-        enum bool pending;
-} ;
-    
-struct decodedInstruction *decoded;
-struct fetchedInstruction *fetched;
+uint32_t ror(uint32_t rmVal, uint32_t shift) {
+  return rotate(rmVal, shift);
+}
 
-void initdf(void) {
-      decoded = malloc(sizeof(struct decodedInstruction));
-      fetched = malloc(sizeof(struct fetchedInstruction));    
+// getOp2 uses this function if I is set
+uint32_t iIsSet(uint32_t op2) {
+  uint32_t imm = masking(op2, 7, 0);
+    uint32_t rot = masking(op2, 11, 8);
+    return rotate(imm, rot);
+}
+
+// getOp2 uses this function if I is set
+uint32_t iIsNotSet(uint32_t op2) {
+  uint32_t shift = masking(op2, 11, 4);
+  uint32_t rm = op2 & 15;
+  uint32_t shiftVal = masking(op2, 11, 7);
+  uint32_t shiftType = masking(op2, 6, 5);
+  if ((shift & 1) == 1) {
+    shiftVal = ARMReg[masking(op2, 11, 8)].reg;
+  }
+  switch(shiftType) {
+    case 0 : return lsl(ARMReg[rm].reg, shiftVal);
+    case 1 : return lsr(ARMReg[rm].reg, shiftVal);
+    case 2 : return asr(ARMReg[rm].reg, shiftVal);
+    case 3 : return ror(ARMReg[rm].reg, shiftVal);
+    default:
+    return 0;
+  }
+}
+
+uint32_t getOp2(void) {
+  uint32_t operand2 = decoded->op2;
+  switch(decoded->i) {
+    case 0: return iIsNotSet(operand2);
+    case 1: return iIsSet(operand2);
+    default:
+    return 0;
+  }
 }
 
 
-
- 
 
 //function to increment PC to next instruction address.
 void incrementPC(void){
@@ -196,7 +254,7 @@ void incrementPC(void){
 
 
 //function to fetch the instruction at the current instruction address stored in PC.
-void fetchNextInstruction(){
+void fetchNextInstruction(void){
 
     fetched->binaryInstruction = PC_; //PC_ is a macro defined earlier.
     fetched->pending = T;
@@ -204,7 +262,7 @@ void fetchNextInstruction(){
 }
  
 //function to execute decoded instructions and clear decoded instructions pending flag.
-void executeDecodedInstruction(){
+void executeDecodedInstruction(void){
 
 
     decoded->pending = F;
@@ -244,7 +302,7 @@ enum mnemonic mnemonicDecoder(void){
 }
 
 //function to decoded a previously fetched instrcution.
-void decodeFetchedInstruction(){
+void decodeFetchedInstruction(void){
  
   decoded->operation = mnemonicDecoder();
   
