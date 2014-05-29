@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include <stdint.h>
+#include <assert.h> 
 
 //These macros make it easier to reference the registers, leading to prettier code.
 #define Rg(X)  ARMReg[(X)].reg
@@ -136,6 +137,32 @@ uint32_t masking(uint32_t inst, int left, int right) {
   return inst;
 }
 
+//Function to check conditions
+enum bool checkCond(uint32_t instruction) {
+	uint32_t cond = masking(instruction, 31, 28 );
+	uint32_t cpsrCond = masking(ARMReg[16].reg, 31, 28);
+	 if ((cond == cpsrCond) || cond == 14) {return T;} //Code = 1110 or matches CPSR
+	else {return F;}
+}
+
+
+//Helper method to change a specific bit
+ uint32_t changebit(uint32_t i, int bit, int change) {
+
+	assert(change == 0 || change == 1);
+
+	uint32_t mask = 1 * pow(2, bit);
+
+	if (change == 1) {
+		i |= mask; 
+	} else if (change == 0) {
+		i &= ~mask;
+	} 
+
+	return i;
+}
+
+
 //Opcode and operation for when operand2 is not an immediate constant.
 uint32_t lsl(uint32_t rm, uint32_t shift) {
   return rm << shift;
@@ -144,6 +171,22 @@ uint32_t lsl(uint32_t rm, uint32_t shift) {
 uint32_t lsr(uint32_t rm, uint32_t shift) {
   return rm >> shift;
 }
+
+//Multiply Instructions
+
+void multiply(uint32_t rs, uint32_t rm, uint32_t rd) { 
+	ARMReg[rd].reg = rm * rs;
+
+//	if () { //S bit is set
+		//N and Z bits of CPSR should be updated
+//	}
+}
+
+void multiplyacc(uint32_t rs, uint32_t rm, uint32_t rd, uint32_t rn) {
+	ARMReg[rd].reg = (rm * rs) + rn ;
+}
+
+
 
 //enumeration of all operation mnemonics for help with decoding and execution.
 enum mnemonic {  AND, EOR, SUB,
@@ -165,6 +208,9 @@ struct decodedInstruction {
         uint32_t i;
         uint32_t a;
         uint32_t s;
+	uint32_t u;
+	uint32_t p;
+	uint32_t l;
         uint32_t cond;
         enum bool pending;
 } ;
@@ -185,6 +231,70 @@ void initdf(void) {
 
 
 
+//Single Data Transfer Instructions
+void preIndex(uint32_t arg) { //If P is set
+	uint32_t offset = 0;
+	uint32_t result = 0;
+	//If I is set, arg is interpreted as a shift register, otherwise 12 bit offset
+	switch (decoded -> i) {
+//		case 1 : offset = IisSet(arg);
+//		break;
+		case 0 : offset = arg;
+		break;
+		default : ;
+		break;
+	} 
+	//If U is set, offset is added to contents of base register. Subtracted otherwise
+	switch (decoded -> u) {
+		case 1 : result = Rg(decoded -> rn) + offset; //P(rn)
+		break;
+		case 0 : result = Rg(decoded -> rn) - offset;
+		break;
+		default : ;
+		break;
+	}
+	//If L is set word is loaded from memory, stored to memory otherwise
+	switch (decoded -> l) {
+		case 1 : Rg(decoded -> rd) = memPtr[result];
+		break;
+		case 0 : memPtr[result] = Rg(decoded -> rd);
+		break;
+		default : ;
+		break;
+	}
+}
+
+void postIndex(uint32_t arg) { //If P is not set
+	uint32_t offset = 0;
+
+	//If I is set, arg is interpreted as a shift register, otherwise 12 bit offset
+	switch (decoded -> i) {
+//		case 1 : offset = IisSet(arg);
+//		break;
+		case 0 : offset = arg;
+		break;
+		default :
+		break;
+	} 
+	//If L is set word is loaded from memory, stored to memory otherwise
+	switch (decoded -> l) {
+		case 1 : Rg(decoded->rd) = memPtr[offset];
+		break;
+		case 0 : memPtr[offset] = Rg(decoded->rd);
+		break;
+		default :
+		break;
+	}
+	//If U is set, offset is added to contents of base register. Subtracted otherwise
+	switch (decoded -> u) {
+		case 1 : Rg(decoded->rn) = Rg(decoded->rn) + offset;
+		break;
+		case 0 : Rg(decoded->rn) = Rg(decoded->rn) - offset;
+		break;
+		default :
+		break;
+	}
+} 
  
 
 //function to increment PC to next instruction address.
