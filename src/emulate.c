@@ -8,6 +8,11 @@
 #include <stdlib.h>
 #include <math.h>
 #include <stdint.h>
+#include <assert.h> 
+
+typedef int bool;
+#define true 1
+#define false 0
 
  //Since static const didn't work, this is an alternative 
 //which is safer than just writing the number.
@@ -66,6 +71,8 @@ void printBits1(uint32_t x) {
   }
   printf("\n "); }
 
+
+
 //Data Processing instruction opcodes.
 void and(uint32_t rn, uint32_t op2, uint32_t des) {
   ARMReg[des].reg = ARMReg[rn].reg & op2;
@@ -112,30 +119,6 @@ void mov(uint32_t op2, uint32_t des) {
   ARMReg[des].reg = op2;
 }
 
-//This function chooses which the right operation depending on the opcode
-void operateOp(uint32_t opcode, uint32_t rn, uint32_t op2, uint32_t des) {
-  switch(opcode) {
-    case 0x00000000 : and(rn, op2, des);
-    break;
-    case 0x00000001 : eor(rn, op2, des);
-    break;
-    case 0x00000002 : sub(rn, op2, des);
-    break;
-    case 0x00000003 : rsb(rn, op2, des);
-    break;
-    case 0x00000004 : add(rn, op2, des);
-    break;
-    case 0x00000008 : tst(rn, op2);
-    break;
-    case 0x00000009 : teq(rn, op2);
-    break;
-    case 0x0000000a : cmp(rn, op2);
-    break;
-    case 0x0000000c : orr(rn, op2, des);
-    break;
-    case 0x0000000d : mov(op2, des);
-  }
-}
 
 //Creates a mask given the first and last index.
 uint32_t masking(uint32_t inst, int left, int right) {
@@ -144,6 +127,29 @@ uint32_t masking(uint32_t inst, int left, int right) {
   inst &= result;
   inst >>= right;
   return inst;
+}
+
+//Function to check conditions
+bool checkCond(uint32_t instruction) {
+	uint32_t cond = masking(instruction, 31, 28 );
+	uint32_t cpsrCond = masking(ARMReg[16].reg, 31, 28);
+	 return (cond == cpsrCond) || cond == 14 ; //Code = 1110 or matches CPSR
+}
+
+//Helper method to change a specific bit
+ uint32_t changebit(uint32_t i, int bit, int change) {
+
+	assert(change == 0 || change == 1);
+
+	uint32_t mask = 1 * pow(2, bit);
+
+	if (change == 1) {
+		i |= mask; 
+	} else if (change == 0) {
+		i &= ~mask;
+	} 
+
+	return i;
 }
 
 //Opcode and operation for when operand2 is not an immediate constant.
