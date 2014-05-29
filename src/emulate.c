@@ -83,6 +83,9 @@ struct decodedInstruction {
         uint32_t i;
         uint32_t a;
         uint32_t s;
+	uint32_t p;
+	uint32_t l;
+	uint32_t u;
         uint32_t cond;
         enum bool pending;
 } ;
@@ -247,51 +250,20 @@ uint32_t ror(uint32_t rmVal, uint32_t shift) {
   return rotate(rmVal, shift);
 }
 
+//Branch Instructions
+void branch(uint32_t offset) {
+	offset <<= 2 ;
+	PC_ = offset + 8;
+	(fetched-> pending) = F;
+	(decoded -> pending) = F;
+}
 
-
-//enumeration of all operation mnemonics for help with decoding and execution.
-enum mnemonic {  AND, EOR, SUB,
-                 RSB, ADD, TST,
-                 TEQ, CMP, ORR,
-                 MOV, MUL, MLA,
-                 LDR, STR, BEQ,
-                 BNE, BGE, BLT,
-                 BGT, BLE, B,
-                 LSL, ANDEQ };
-
-//Struct representing decoded instruction.
-struct decodedInstruction {
-        enum mnemonic operation;
-        uint32_t rd;
-        uint32_t rn;
-        uint32_t rm;
-        uint32_t op2;
-        uint32_t i;
-        uint32_t a;
-        uint32_t s;
-        uint32_t cond;
-        enum bool pending;
-} ;
-    
-//Struct representing fetched instruction.
-struct fetchedInstruction {
-        uint32_t binaryInstruction;
-        enum bool pending;
-} ;
-    
-struct decodedInstruction *decoded;
-struct fetchedInstruction *fetched;
 
 // getOp2 uses this function if I is set
 uint32_t iIsSet(uint32_t op2) {
   uint32_t imm = masking(op2, 7, 0);
     uint32_t rot = masking(op2, 11, 8);
     return rotate(imm, rot);
-}
-
-void initdf(void) {
-      decoded = malloc(sizeof(struct decodedInstruction));
-      fetched = malloc(sizeof(struct fetchedInstruction));    
 }
 
 // getOp2 uses this function if I is set
@@ -329,8 +301,8 @@ void preIndex(uint32_t arg) { //If P is set
 	uint32_t result = 0;
 	//If I is set, arg is interpreted as a shift register, otherwise 12 bit offset
 	switch (decoded -> i) {
-//		case 1 : offset = iIsSet(arg);
-//		break;
+		case 1 : offset = iIsSet(arg);
+		break;
 		case 0 : offset = arg;
 		break;
 		default : ;
@@ -338,7 +310,7 @@ void preIndex(uint32_t arg) { //If P is set
 	} 
 	//If U is set, offset is added to contents of base register. Subtracted otherwise
 	switch (decoded -> u) {
-		case 1 : result = Rg(decoded -> rn) + offset; //P(rn)
+		case 1 : result = Rg(decoded -> rn) + offset; 
 		break;
 		case 0 : result = Rg(decoded -> rn) - offset;
 		break;
@@ -361,8 +333,8 @@ void postIndex(uint32_t arg) { //If P is not set
 
 	//If I is set, arg is interpreted as a shift register, otherwise 12 bit offset
 	switch (decoded -> i) {
-//		case 1 : offset = IisSet(arg);
-//		break;
+		case 1 : offset = iIsSet(arg);
+		break;
 		case 0 : offset = arg;
 		break;
 		default :
