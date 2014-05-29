@@ -329,7 +329,7 @@ void preIndex(uint32_t arg) { //If P is set
 	uint32_t result = 0;
 	//If I is set, arg is interpreted as a shift register, otherwise 12 bit offset
 	switch (decoded -> i) {
-//		case 1 : offset = IisSet(arg);
+//		case 1 : offset = iIsSet(arg);
 //		break;
 		case 0 : offset = arg;
 		break;
