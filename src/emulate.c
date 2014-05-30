@@ -9,22 +9,10 @@
 #include <stdint.h>
 #include <assert.h> 
 
-//These macros make it easier to reference the registers, leading to prettier code.
-#define Rg(X)  ARMReg[(X)].reg
-#define SP_    ARMReg[13].reg
-#define LR_    ARMReg[14].reg
-#define PC_    ARMReg[15].reg
-#define CPSR_  ARMReg[16].reg
-
  //Since static const didn't work, this is an alternative 
 //which is safer than just writing the number.
-enum {REG = 17, MEM = 16384};
+enum {REG = 17, MEM = 65536};
 enum bool {F, T};
-
-/*typedef only gives name to the struct ARM_STATE so that 
-you don't have to write struct ARM_STATE when you initialise
-the struct. This leads you to only have to write State when 
-initialising*/
 
 //creating struct for each register.
 typedef struct ARM_REGISTER {
@@ -33,11 +21,11 @@ typedef struct ARM_REGISTER {
 } Register;
 
 //Creating a pointer to the ARM Machine main memory.
-uint32_t *memPtr;
+uint8_t *memPtr;
 
 //This method is called by the main method to initialise all the memory.
 void initMem() {
-  memPtr = (uint32_t *) calloc(MEM, sizeof(uint32_t));
+  memPtr = (uint8_t *) calloc(MEM, sizeof(uint8_t));
 
 } 
 
@@ -63,6 +51,11 @@ Register ARMReg[REG] = {
   {"CPSR", 0}
 };
 
+//These macros make it easier to reference the registers, leading to prettier code.
+#define Rg(X)  ARMReg[(X)].reg
+#define PC_    ARMReg[15].reg
+#define CPSR_  ARMReg[16].reg
+
 //enumeration of all operation mnemonics for help with decoding and execution.
 enum mnemonic {  AND, EOR, SUB,
                  RSB, ADD, TST,
@@ -84,9 +77,9 @@ struct decodedInstruction {
         uint32_t i;
         uint32_t a;
         uint32_t s;
-		uint32_t p;
-		uint32_t l;
-		uint32_t u;
+		    uint32_t p;
+		    uint32_t l;
+		    uint32_t u;
         uint32_t cond;
         enum bool pending;
 } ;
@@ -123,6 +116,8 @@ void printBits1(uint32_t x) {
     PC_,SD_,LR & CPSR_ are similarly replaced with their respective registers.
 */
 
+// Since V bit is unaffected, this funtion preserves the 28th bit of the CPSR 
+    //and initialises eveything else to zero
 uint32_t setCPSRA() {
   CPSR_ &= (1 << 28);
   return CPSR_;
@@ -136,9 +131,6 @@ void setCPSRL(uint32_t rd) {
     }
     if ((Rg(rd) & 1 << 31) == pow(2, 31)) {
       CPSR_ += 1 << 31;
-    }
-    if (Rg(rd) > (pow(2, 32) - 1)){
-        CPSR_ += (1 << 29);
     }
   }
 }
@@ -225,7 +217,7 @@ void mov(uint32_t op2, uint32_t rd) {
 }
 
 //Creates a mask given the first and last index.
-uint32_t masking(uint32_t inst, int left, int right) {
+uint32_t getVal(uint32_t inst, int left, int right) {
   int m = ((left - right) + 1);
   uint32_t result = ~(~0 << m) << right;
   inst &= result;
@@ -246,8 +238,8 @@ uint32_t rotate(uint32_t imm, uint32_t n) {
 
 //Function to check conditions
 enum bool checkCond(uint32_t instruction) {
-	uint32_t cond = masking(instruction, 31, 28 );
-	uint32_t cpsrCond = masking(ARMReg[16].reg, 31, 28);
+	uint32_t cond = getVal(instruction, 31, 28 );
+	uint32_t cpsrCond = getVal(ARMReg[16].reg, 31, 28);
 	 if ((cond == cpsrCond) || cond == 14) {return T;} //Code = 1110 or matches CPSR
 	else {return F;}
 }
@@ -279,16 +271,6 @@ uint32_t lsr(uint32_t rm, uint32_t shift) {
   return rm >> shift;
 }
 
-//Multiply Instructions
-
-void multiply(uint32_t rs, uint32_t rm, uint32_t rd) { 
-	ARMReg[rd].reg = rm * rs;
-
-//	if () { //S bit is set
-		//N and Z bits of CPSR should be updated
-//	}
-}
-
 uint32_t asr(uint32_t rmVal, uint32_t shift) {
   uint32_t bit31 = rmVal & (1 << 31);
   while (shift > 0) {
@@ -298,9 +280,7 @@ uint32_t asr(uint32_t rmVal, uint32_t shift) {
   }
   return rmVal;
 }
-void multiplyacc(uint32_t rs, uint32_t rm, uint32_t rd, uint32_t rn) {
-	ARMReg[rd].reg = (rm * rs) + rn ;
-}
+
 uint32_t ror(uint32_t rmVal, uint32_t shift) {
   return rotate(rmVal, shift);
 }
@@ -318,20 +298,20 @@ void branch(uint32_t offset) {
 
 // getOp2 uses this function if I is set
 uint32_t iIsSet(uint32_t op2) {
-  uint32_t imm = masking(op2, 7, 0);
-    uint32_t rot = masking(op2, 11, 8);
+  uint32_t imm = getVal(op2, 7, 0);
+    uint32_t rot = getVal(op2, 11, 8);
     return rotate(imm, rot);
 }
 
 
-// getOp2 uses this function if I is set
+// barrelShifter uses this function if I is set
 uint32_t iIsNotSet(uint32_t op2) {
-  uint32_t shift = masking(op2, 11, 4);
+  uint32_t shift = getVal(op2, 11, 4);
   uint32_t rm = op2 & 15;
-  uint32_t shiftVal = masking(op2, 11, 7);
-  uint32_t shiftType = masking(op2, 6, 5);
+  uint32_t shiftVal = getVal(op2, 11, 7);
+  uint32_t shiftType = getVal(op2, 6, 5);
   if ((shift & 1) == 1) {
-    shiftVal = ARMReg[masking(op2, 11, 8)].reg;
+    shiftVal = ARMReg[getVal(op2, 11, 8)].reg;
   }
   switch(shiftType) {
     case 0 : return lsl(ARMReg[rm].reg, shiftVal);
@@ -343,7 +323,7 @@ uint32_t iIsNotSet(uint32_t op2) {
   }
 }
 
-uint32_t barrelShifter(void) {
+uint32_t getOp2(void) {
   uint32_t operand2 = decoded->op2;
   switch(decoded->i) {
     case 0: return iIsNotSet(operand2);
@@ -440,9 +420,6 @@ void multiply(void) {
     CPSR_ = 0;
     if (result == 0) {
       CPSR_ += (1 << 30);
-    }
-    if (result > (pow(2, 32) - 1)) {
-      CPSR_ += (1 << 28);
     }
     CPSR_ += (result & (1 << 31));
   }
