@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include <stdint.h>
+#include <assert.h> 
 
 //These macros make it easier to reference the registers, leading to prettier code.
 #define Rg(X)  ARMReg[(X)].reg
@@ -37,6 +38,7 @@ uint32_t *memPtr;
 //This method is called by the main method to initialise all the memory.
 void initMem() {
   memPtr = (uint32_t *) calloc(MEM, sizeof(uint32_t));
+
 } 
 
 //Initialised registers to 0 and assigned each
@@ -195,6 +197,32 @@ uint32_t rotate(uint32_t imm, uint32_t n) {
   return imm;
 }
 
+//Function to check conditions
+enum bool checkCond(uint32_t instruction) {
+	uint32_t cond = masking(instruction, 31, 28 );
+	uint32_t cpsrCond = masking(ARMReg[16].reg, 31, 28);
+	 if ((cond == cpsrCond) || cond == 14) {return T;} //Code = 1110 or matches CPSR
+	else {return F;}
+}
+
+
+//Helper method to change a specific bit
+ uint32_t changebit(uint32_t i, int bit, int change) {
+
+	assert(change == 0 || change == 1);
+
+	uint32_t mask = 1 * pow(2, bit);
+
+	if (change == 1) {
+		i |= mask; 
+	} else if (change == 0) {
+		i &= ~mask;
+	} 
+
+	return i;
+}
+
+
 //Opcode and operation for when operand2 is not an immediate constant.
 uint32_t lsl(uint32_t rm, uint32_t shift) {
   return rm << shift;
@@ -202,6 +230,16 @@ uint32_t lsl(uint32_t rm, uint32_t shift) {
 
 uint32_t lsr(uint32_t rm, uint32_t shift) {
   return rm >> shift;
+}
+
+//Multiply Instructions
+
+void multiply(uint32_t rs, uint32_t rm, uint32_t rd) { 
+	ARMReg[rd].reg = rm * rs;
+
+//	if () { //S bit is set
+		//N and Z bits of CPSR should be updated
+//	}
 }
 
 uint32_t asr(uint32_t rmVal, uint32_t shift) {
@@ -213,10 +251,23 @@ uint32_t asr(uint32_t rmVal, uint32_t shift) {
   }
   return rmVal;
 }
-
+void multiplyacc(uint32_t rs, uint32_t rm, uint32_t rd, uint32_t rn) {
+	ARMReg[rd].reg = (rm * rs) + rn ;
+}
 uint32_t ror(uint32_t rmVal, uint32_t shift) {
   return rotate(rmVal, shift);
 }
+
+//Branch Instructions
+//May or may not be right
+void branch(uint32_t offset) {
+	offset <<= 2 ;
+	PC_ = offset + 8;
+	(fetched-> pending) = F;
+	(decoded -> pending) = F;
+}
+
+
 
 // getOp2 uses this function if I is set
 uint32_t iIsSet(uint32_t op2) {
@@ -254,7 +305,82 @@ uint32_t getOp2(void) {
   }
 }
 
+//Single Data Transfer Instructions
 
+void ldr(uint32_t arg) {
+
+	uint32_t offset = 0;
+	uint32_t result = 0;
+
+	//If I is set, arg is interpreted as a shift register, otherwise 12 bit offset
+	switch (decoded -> i) {
+		case 1 : offset = iIsSet(arg);
+		break;
+		case 0 : offset = arg;
+		break;
+		default : ;
+		break;
+	} 
+
+	if (decoded -> p == 1) {
+		if (decoded -> u == 1) {
+			result = Rg(decoded -> rn) + offset;
+		} else {
+			result = Rg(decoded -> rn) - offset;
+		}
+
+		Rg(decoded->rd) = memPtr[result];
+
+	} else {
+		
+		Rg(decoded->rd) = memPtr[offset];
+
+		if (decoded -> u == 1) {
+			Rg(decoded -> rn) += offset;
+		} else {
+			Rg(decoded -> rn) -= offset;
+		}
+	}
+	 
+}
+
+void str(uint32_t arg) {
+	
+	uint32_t offset = 0;
+	uint32_t result = 0;
+
+	//If I is set, arg is interpreted as a shift register, otherwise 12 bit offset
+	switch (decoded -> i) {
+		case 1 : offset = iIsSet(arg);
+		break;
+		case 0 : offset = arg;
+		break;
+		default : ;
+		break;
+	} 
+
+	if (decoded -> p == 1) {
+		if (decoded -> u == 1) {
+			result = Rg(decoded -> rn) + offset;
+		} else {
+			result = Rg(decoded -> rn) - offset;
+		}
+
+		memPtr[result] = Rg(decoded -> rd);
+
+	} else {
+		
+		memPtr[offset] = Rg(decoded->rd);
+
+		if (decoded -> u == 1) {
+			Rg(decoded -> rn) += offset;
+		} else {
+			Rg(decoded -> rn) -= offset;
+		}
+	}
+	 
+}
+ 
 
 //function to increment PC to next instruction address.
 void incrementPC(void){
