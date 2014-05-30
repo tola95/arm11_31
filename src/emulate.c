@@ -268,10 +268,6 @@ uint32_t iIsSet(uint32_t op2) {
     return rotate(imm, rot);
 }
 
-void initdf(void) {
-      decoded = malloc(sizeof(struct decodedInstruction));
-      fetched = malloc(sizeof(struct fetchedInstruction));    
-}
 
 // getOp2 uses this function if I is set
 uint32_t iIsNotSet(uint32_t op2) {
