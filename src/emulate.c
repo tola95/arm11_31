@@ -84,20 +84,20 @@ enum mnemonic {  AND, EOR, SUB,
 //Struct representing decoded instruction.
 struct decodedInstruction {
         enum mnemonic operation;
+        enum bool pending;        
         uint32_t offset;
         uint32_t cond;
+        uint32_t op2;
         uint32_t rd;
         uint32_t rn;
         uint32_t rm;
-        uint32_t op2;
+        uint32_t rs;
         uint32_t i;
         uint32_t a;
         uint32_t s;
         uint32_t u;
         uint32_t p;
         uint32_t l;
-	uint32_t rs;
-        enum bool pending;
 } ;
     
 //Struct representing fetched instruction.
@@ -123,7 +123,7 @@ void printBits1(uint32_t x) {
     else
       printf("1"); x = x << 1;
   }
-  printf(")\n "); }
+  printf("\n "); }
 
 //Data Processing instruction opcodes.
 
@@ -201,10 +201,10 @@ uint32_t rotate(uint32_t imm, uint32_t n) {
 
 //Function to check conditions
 enum bool checkCond(uint32_t instruction) {
-  uint32_t cond = masking(instruction, 31, 28 );
-  uint32_t cpsrCond = masking(ARMReg[16].reg, 31, 28);
-  if ((cond == cpsrCond) || cond == 14) {return T;} //Code = 1110 or matches CPSR
-  else {return F;}
+	uint32_t cond = masking(instruction, 31, 28 );
+	uint32_t cpsrCond = masking(ARMReg[16].reg, 31, 28);
+	 if ((cond == cpsrCond) || cond == 14) {return T;} //Code = 1110 or matches CPSR
+	else {return F;}
 }
 
 
@@ -237,7 +237,7 @@ uint32_t lsr(uint32_t rm, uint32_t shift) {
 //Multiply Instructions
 
 void multiply(uint32_t rs, uint32_t rm, uint32_t rd) { 
-	ARMReg[rd].reg = rm * rs;
+	Rg(rd) = Rg(rm) * Rg(rs);
 
 //	if () { //S bit is set
 		//N and Z bits of CPSR should be updated
@@ -254,7 +254,7 @@ uint32_t asr(uint32_t rmVal, uint32_t shift) {
   return rmVal;
 }
 void multiplyacc(uint32_t rs, uint32_t rm, uint32_t rd, uint32_t rn) {
-	ARMReg[rd].reg = (rm * rs) + rn ;
+	Rg(rd) = (rm * rs) + rn ;
 }
 uint32_t ror(uint32_t rmVal, uint32_t shift) {
   return rotate(rmVal, shift);
@@ -266,9 +266,8 @@ uint32_t ror(uint32_t rmVal, uint32_t shift) {
 void branch(uint32_t offset) {
 	offset <<= 2 ;
 	PC_ = offset + 8;
-	(fetched-> pending) = F;
+	(fetched -> pending) = F;
 	(decoded -> pending) = F;
-
 }
 
 
@@ -318,11 +317,11 @@ void ldr(uint32_t arg) {
 	uint32_t offset = 0;
 	uint32_t result = 0;
 
-	//If I is set, arg is interpreted as a shift register, otherwise 12 			bit offset
+	//If I is set, arg is interpreted as a shift register, otherwise 12 bit offset
 	switch (decoded -> i) {
-		case 1 : offset = iIsNotSet(arg);
+		case 1 : offset = iIsSet(arg);
 		break;
-		case 0 : offset = iIsSet(arg);
+		case 0 : offset = arg;
 		break;
 		default : ;
 		break;
@@ -447,8 +446,20 @@ void executeDecodedInstruction(void){
         case MOV : mov(decoded->op2, decoded->rd);
                    break;
         case MLA : ;                 
-//        case MUL : multiply();
-                   break;                   
+        case MUL : multiply(decoded->rs, decoded->rm, decoded->rd);
+                   break;        
+        case LDR : ldr(decoded->offset);
+                   break;         
+        case STR : str(decoded->offset);
+                   break;
+        case BEQ : ;
+        case BNE : ;
+        case BGE : ;
+        case BLT : ;
+        case BGT : ;
+        case BLE : ;
+        case B   : branch(decoded->offset);
+                   break;         
         default:   break;
   }
     
@@ -505,8 +516,8 @@ enum instructionType mnemonicDecoder(void){
 
                 //Using hex values since binary isnt available.
                 
-                case 0x00: operation = BEQ; break; // 0b 0000 == eq
-                case 0x01: operation = BNE; break; // 0b 0001 != ne
+                case 0x0 : operation = BEQ; break; // 0b 0000 == eq
+                case 0x1 : operation = BNE; break; // 0b 0001 != ne
                 case 0x10: operation = BGE; break; // 0b 1010 >= ge
                 case 0x11: operation = BLT; break; // 0b 1011 <  lt
                 case 0x12: operation = BGT; break; // 0b 1100 >  gt
@@ -530,13 +541,13 @@ enum instructionType mnemonicDecoder(void){
             
                 //Using hex values since binary isnt available.
                 
-                case 0x00: operation = AND; break; // 0b 0000
-                case 0x01: operation = EOR; break; // 0b 0001
-                case 0x02: operation = SUB; break; // 0b 0010
-                case 0x03: operation = RSB; break; // 0b 0011
-                case 0x04: operation = ADD; break; // 0b 0100
-                case 0x08: operation = TST; break; // 0b 1000
-                case 0x09: operation = TEQ; break; // 0b 1001
+                case 0x0 : operation = AND; break; // 0b 0000
+                case 0x1 : operation = EOR; break; // 0b 0001
+                case 0x2 : operation = SUB; break; // 0b 0010
+                case 0x3 : operation = RSB; break; // 0b 0011
+                case 0x4 : operation = ADD; break; // 0b 0100
+                case 0x8 : operation = TST; break; // 0b 1000
+                case 0x9 : operation = TEQ; break; // 0b 1001
                 case 0x10: operation = CMP; break; // 0b 1010
                 case 0x12: operation = ORR; break; // 0b 1100
                 case 0x13: operation = MOV; break; // 0b 1101
@@ -574,15 +585,15 @@ void decodeFetchedInstruction(void){
                                     decoded->i        = masking(fetched->binaryInstruction, 25, 25) ;
                                     decoded->rn       = masking(fetched->binaryInstruction, 19, 16) ;
                                     decoded->rd       = masking(fetched->binaryInstruction, 15, 12) ;
-                                    decoded->op2      = masking(fetched->binaryInstruction, 11, 00) ;
+                                    decoded->op2      = masking(fetched->binaryInstruction, 11,  0) ;
                                     break;
         case MULTIPLY :             decoded->cond     = masking(fetched->binaryInstruction, 31, 28) ;
                                     decoded->a        = masking(fetched->binaryInstruction, 21, 21) ;
                                     decoded->s        = masking(fetched->binaryInstruction, 20, 20) ;
                                     decoded->rd       = masking(fetched->binaryInstruction, 19, 16) ;
                                     decoded->rn       = masking(fetched->binaryInstruction, 15, 12) ;
-                                    decoded->rs       = masking(fetched->binaryInstruction, 11, 8) ;
-                                    decoded->rm       = masking(fetched->binaryInstruction, 03, 00) ;
+                                    decoded->rs       = masking(fetched->binaryInstruction, 11,  8) ;
+                                    decoded->rm       = masking(fetched->binaryInstruction,  3,  0) ;
                                     break;
         case SINGLE_DATA_TRANSFER : decoded->cond     = masking(fetched->binaryInstruction, 31, 28) ;
                                     decoded->i        = masking(fetched->binaryInstruction, 25, 25) ;
@@ -591,10 +602,10 @@ void decodeFetchedInstruction(void){
                                     decoded->rd       = masking(fetched->binaryInstruction, 15, 12) ;
                                     decoded->u        = masking(fetched->binaryInstruction, 23, 23) ;
                                     decoded->l        = masking(fetched->binaryInstruction, 20, 20) ;
-                                    decoded->offset   = masking(fetched->binaryInstruction, 11, 00) ;
+                                    decoded->offset   = masking(fetched->binaryInstruction, 11,  0) ;
                                     break;
         case BRANCH               : decoded->l        = masking(fetched->binaryInstruction, 31, 28) ;
-                                    decoded->offset   = masking(fetched->binaryInstruction, 23, 00) ;
+                                    decoded->offset   = masking(fetched->binaryInstruction, 23,  0) ;
                                     break;
         case SPECIAL              : break;
 
@@ -652,7 +663,7 @@ void printFinalState(void){
      /* file closing */
      fclose(file);
 
-	
+
 
      //Pipeline execution of instructions.
     
@@ -663,12 +674,16 @@ void printFinalState(void){
 
         if ( decoded->pending == T ) {
 
-            if (decoded->operation == ANDEQ) {
+            if (decoded->operation == ANDEQ) { //check for special halt instruction
                 break;
             }
-            executeDecodedInstruction();
-            decoded->pending = F;
 
+            if ( decoded->cond == CPSR_ ) { //check if conditions match CPSR
+                executeDecodedInstruction();
+            }
+            
+                decoded->pending = F;
+            
         }
 
         if ( fetched->pending == T ) {
