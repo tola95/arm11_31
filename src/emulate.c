@@ -83,6 +83,9 @@ struct decodedInstruction {
         uint32_t i;
         uint32_t a;
         uint32_t s;
+	uint32_t p;
+	uint32_t l;
+	uint32_t u;
         uint32_t cond;
         enum bool pending;
 } ;
@@ -247,51 +250,21 @@ uint32_t ror(uint32_t rmVal, uint32_t shift) {
   return rotate(rmVal, shift);
 }
 
+//Branch Instructions
+//May or may not be right
+void branch(uint32_t offset) {
+	offset <<= 2 ;
+	PC_ = offset + 8;
+	(fetched-> pending) = F;
+	(decoded -> pending) = F;
+}
 
-
-//enumeration of all operation mnemonics for help with decoding and execution.
-enum mnemonic {  AND, EOR, SUB,
-                 RSB, ADD, TST,
-                 TEQ, CMP, ORR,
-                 MOV, MUL, MLA,
-                 LDR, STR, BEQ,
-                 BNE, BGE, BLT,
-                 BGT, BLE, B,
-                 LSL, ANDEQ };
-
-//Struct representing decoded instruction.
-struct decodedInstruction {
-        enum mnemonic operation;
-        uint32_t rd;
-        uint32_t rn;
-        uint32_t rm;
-        uint32_t op2;
-        uint32_t i;
-        uint32_t a;
-        uint32_t s;
-        uint32_t cond;
-        enum bool pending;
-} ;
-    
-//Struct representing fetched instruction.
-struct fetchedInstruction {
-        uint32_t binaryInstruction;
-        enum bool pending;
-} ;
-    
-struct decodedInstruction *decoded;
-struct fetchedInstruction *fetched;
 
 // getOp2 uses this function if I is set
 uint32_t iIsSet(uint32_t op2) {
   uint32_t imm = masking(op2, 7, 0);
     uint32_t rot = masking(op2, 11, 8);
     return rotate(imm, rot);
-}
-
-void initdf(void) {
-      decoded = malloc(sizeof(struct decodedInstruction));
-      fetched = malloc(sizeof(struct fetchedInstruction));    
 }
 
 // getOp2 uses this function if I is set
@@ -324,69 +297,80 @@ uint32_t getOp2(void) {
 }
 
 //Single Data Transfer Instructions
-void preIndex(uint32_t arg) { //If P is set
+
+void ldr(uint32_t arg) {
+
 	uint32_t offset = 0;
 	uint32_t result = 0;
+
 	//If I is set, arg is interpreted as a shift register, otherwise 12 bit offset
 	switch (decoded -> i) {
-//		case 1 : offset = IisSet(arg);
-//		break;
+		case 1 : offset = iIsSet(arg);
+		break;
 		case 0 : offset = arg;
 		break;
 		default : ;
 		break;
 	} 
-	//If U is set, offset is added to contents of base register. Subtracted otherwise
-	switch (decoded -> u) {
-		case 1 : result = Rg(decoded -> rn) + offset; //P(rn)
-		break;
-		case 0 : result = Rg(decoded -> rn) - offset;
-		break;
-		default : ;
-		break;
+
+	if (decoded -> p == 1) {
+		if (decoded -> u == 1) {
+			result = Rg(decoded -> rn) + offset;
+		} else {
+			result = Rg(decoded -> rn) - offset;
+		}
+
+		Rg(decoded->rd) = memPtr[result];
+
+	} else {
+		
+		Rg(decoded->rd) = memPtr[offset];
+
+		if (decoded -> u == 1) {
+			Rg(decoded -> rn) += offset;
+		} else {
+			Rg(decoded -> rn) -= offset;
+		}
 	}
-	//If L is set word is loaded from memory, stored to memory otherwise
-	switch (decoded -> l) {
-		case 1 : Rg(decoded -> rd) = memPtr[result];
-		break;
-		case 0 : memPtr[result] = Rg(decoded -> rd);
-		break;
-		default : ;
-		break;
-	}
+	 
 }
 
-void postIndex(uint32_t arg) { //If P is not set
+void str(uint32_t arg) {
+	
 	uint32_t offset = 0;
+	uint32_t result = 0;
 
 	//If I is set, arg is interpreted as a shift register, otherwise 12 bit offset
 	switch (decoded -> i) {
-//		case 1 : offset = IisSet(arg);
-//		break;
+		case 1 : offset = iIsSet(arg);
+		break;
 		case 0 : offset = arg;
 		break;
-		default :
+		default : ;
 		break;
 	} 
-	//If L is set word is loaded from memory, stored to memory otherwise
-	switch (decoded -> l) {
-		case 1 : Rg(decoded->rd) = memPtr[offset];
-		break;
-		case 0 : memPtr[offset] = Rg(decoded->rd);
-		break;
-		default :
-		break;
+
+	if (decoded -> p == 1) {
+		if (decoded -> u == 1) {
+			result = Rg(decoded -> rn) + offset;
+		} else {
+			result = Rg(decoded -> rn) - offset;
+		}
+
+		memPtr[result] = Rg(decoded -> rd);
+
+	} else {
+		
+		memPtr[offset] = Rg(decoded->rd);
+
+		if (decoded -> u == 1) {
+			Rg(decoded -> rn) += offset;
+		} else {
+			Rg(decoded -> rn) -= offset;
+		}
 	}
-	//If U is set, offset is added to contents of base register. Subtracted otherwise
-	switch (decoded -> u) {
-		case 1 : Rg(decoded->rn) = Rg(decoded->rn) + offset;
-		break;
-		case 0 : Rg(decoded->rn) = Rg(decoded->rn) - offset;
-		break;
-		default :
-		break;
-	}
-} 
+	 
+}
  
 
 //function to increment PC to next instruction address.
