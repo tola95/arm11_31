@@ -41,9 +41,6 @@ void initMem() {
 
 } 
 
-uint32_t fetchFromMemory(uint16_t loc) {
-  return memPtr[loc];
-}
 
 //Initialised registers to 0 and assigned each
 //register to its string name.
@@ -99,6 +96,7 @@ struct decodedInstruction {
         uint32_t u;
         uint32_t p;
         uint32_t l;
+	uint32_t rs;
         enum bool pending;
 } ;
     
@@ -125,7 +123,7 @@ void printBits1(uint32_t x) {
     else
       printf("1"); x = x << 1;
   }
-  printf("\n "); }
+  printf(")\n "); }
 
 //Data Processing instruction opcodes.
 
@@ -203,10 +201,10 @@ uint32_t rotate(uint32_t imm, uint32_t n) {
 
 //Function to check conditions
 enum bool checkCond(uint32_t instruction) {
-	uint32_t cond = masking(instruction, 31, 28 );
-	uint32_t cpsrCond = masking(ARMReg[16].reg, 31, 28);
-	 if ((cond == cpsrCond) || cond == 14) {return T;} //Code = 1110 or matches CPSR
-	else {return F;}
+  uint32_t cond = masking(instruction, 31, 28 );
+  uint32_t cpsrCond = masking(ARMReg[16].reg, 31, 28);
+  if ((cond == cpsrCond) || cond == 14) {return T;} //Code = 1110 or matches CPSR
+  else {return F;}
 }
 
 
@@ -363,7 +361,7 @@ void str(uint32_t arg) {
 	uint32_t offset = 0;
 	uint32_t result = 0;
 
-	//If I is set, arg is interpreted as a shift register, otherwise 12 		bit offset
+	//If I is set, arg is interpreted as a shift register, otherwise 12 bit offset
 	switch (decoded -> i) {
 		case 1 : offset = iIsSet(arg);
 		break;
@@ -449,7 +447,7 @@ void executeDecodedInstruction(void){
         case MOV : mov(decoded->op2, decoded->rd);
                    break;
         case MLA : ;                 
-        case MUL : multiply();
+//        case MUL : multiply();
                    break;                   
         default:   break;
   }
@@ -583,7 +581,7 @@ void decodeFetchedInstruction(void){
                                     decoded->s        = masking(fetched->binaryInstruction, 20, 20) ;
                                     decoded->rd       = masking(fetched->binaryInstruction, 19, 16) ;
                                     decoded->rn       = masking(fetched->binaryInstruction, 15, 12) ;
-                                    decoded->rs       = masking(fetched->binaryInstruction, 11, 08) ;
+                                    decoded->rs       = masking(fetched->binaryInstruction, 11, 8) ;
                                     decoded->rm       = masking(fetched->binaryInstruction, 03, 00) ;
                                     break;
         case SINGLE_DATA_TRANSFER : decoded->cond     = masking(fetched->binaryInstruction, 31, 28) ;
@@ -608,6 +606,22 @@ void decodeFetchedInstruction(void){
 
 //Function to print the state of the memory and registers when the program finishes.
 void printFinalState(void){
+  printf("Registers: \n");
+  for (int i = 0; i<13; i++) {
+    printf("%s\t:\t%i (0x%08x) \n", ARMReg[(i)].ident, Rg(i), Rg(i) );
+  }
+  
+  for (int i =15; i<17; i++) {
+    printf("%s\t:\t%i (0x%08x) \n", ARMReg[(i)].ident, ARMReg[i].reg, ARMReg[i].reg );
+  }
+
+  printf("Non zero memory: \n");
+  uint32_t count = 0;
+  while(memPtr[count]!=0) {
+    printf("0x%08x \t: 0x%08x \n", (count*4), memPtr[count]);
+    count++;
+  }
+
 }
 
 
@@ -638,7 +652,7 @@ void printFinalState(void){
      /* file closing */
      fclose(file);
 
-
+	
 
      //Pipeline execution of instructions.
     
