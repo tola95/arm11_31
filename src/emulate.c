@@ -41,6 +41,10 @@ void initMem() {
 
 } 
 
+uint32_t fetchFromMemory(uint16_t loc) {
+  return memPtr[loc];
+}
+
 //Initialised registers to 0 and assigned each
 //register to its string name.
 Register ARMReg[REG] = {
@@ -252,11 +256,13 @@ uint32_t ror(uint32_t rmVal, uint32_t shift) {
 
 //Branch Instructions
 //May or may not be right
+//Executed if checkCond(instruction)
 void branch(uint32_t offset) {
 	offset <<= 2 ;
 	PC_ = offset + 8;
 	(fetched-> pending) = F;
 	(decoded -> pending) = F;
+
 }
 
 
@@ -302,47 +308,55 @@ uint32_t getOp2(void) {
 
 void ldr(uint32_t arg) {
 
+	if (decoded ->l == 1) {
+
 	uint32_t offset = 0;
 	uint32_t result = 0;
 
-	//If I is set, arg is interpreted as a shift register, otherwise 12 bit offset
+	//If I is set, arg is interpreted as a shift register, otherwise 12 			bit offset
 	switch (decoded -> i) {
-		case 1 : offset = iIsSet(arg);
+		case 1 : offset = iIsNotSet(arg);
 		break;
-		case 0 : offset = arg;
+		case 0 : offset = iIsSet(arg);
 		break;
 		default : ;
 		break;
 	} 
 
+	//If P is set, offset is added/subtracted before transferring data
 	if (decoded -> p == 1) {
+		//If u is set, offset is added
 		if (decoded -> u == 1) {
 			result = Rg(decoded -> rn) + offset;
 		} else {
 			result = Rg(decoded -> rn) - offset;
 		}
-
+		//Data is transferred
 		Rg(decoded->rd) = memPtr[result];
 
 	} else {
-		
+		//Data is transferred
 		Rg(decoded->rd) = memPtr[offset];
-
+		//If u is set, offset is added
 		if (decoded -> u == 1) {
 			Rg(decoded -> rn) += offset;
 		} else {
 			Rg(decoded -> rn) -= offset;
 		}
+	}
+
 	}
 	 
 }
 
 void str(uint32_t arg) {
+
+	if (decoded -> l == 0) {
 	
 	uint32_t offset = 0;
 	uint32_t result = 0;
 
-	//If I is set, arg is interpreted as a shift register, otherwise 12 bit offset
+	//If I is set, arg is interpreted as a shift register, otherwise 12 		bit offset
 	switch (decoded -> i) {
 		case 1 : offset = iIsSet(arg);
 		break;
@@ -352,27 +366,33 @@ void str(uint32_t arg) {
 		break;
 	} 
 
+	//If P is set, offset is added/subtracted before transferring data
 	if (decoded -> p == 1) {
+		//If u is set, offset is added
 		if (decoded -> u == 1) {
 			result = Rg(decoded -> rn) + offset;
 		} else {
 			result = Rg(decoded -> rn) - offset;
 		}
-
+		//Data is transferred
 		memPtr[result] = Rg(decoded -> rd);
 
 	} else {
-		
+		//Data is transferred
 		memPtr[offset] = Rg(decoded->rd);
-
+		//If u is set, offset is added
 		if (decoded -> u == 1) {
 			Rg(decoded -> rn) += offset;
 		} else {
 			Rg(decoded -> rn) -= offset;
 		}
 	}
+
+	}
 	 
 }
+
+        
  
 
 //function to increment PC to next instruction address.
