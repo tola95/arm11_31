@@ -76,6 +76,7 @@ struct decodedInstruction {
         enum mnemonic operation;
         uint32_t rd;
         uint32_t rn;
+        uint32_t rs;
         uint32_t rm;
         uint32_t op2;
         uint32_t i;
@@ -117,32 +118,86 @@ void printBits1(uint32_t x) {
     PC_,SD_,LR & CPSR_ are similarly replaced with their respective registers.
 */
 
+uint32_t setCPSRA() {
+  CPSR_ &= (1 << 28);
+  return CPSR_;
+}
+
+void setCPSRL(uint32_t rd) {
+  if (decoded->i == 1) {
+    CPSR_ = setCPSRA();
+    if (Rg(rd) == 0) {
+      CPSR_ += (1 << 30);
+    }
+    if ((Rg(rd) & 1 << 31) == pow(2, 31)) {
+      CPSR_ += 1 << 31;
+    }
+    if (Rg(rd) > (pow(2, 32) - 1)){
+        CPSR_ += (1 << 29);
+    }
+  }
+}
+
 
 void and(uint32_t rn, uint32_t op2, uint32_t rd) {
   Rg(rd) = Rg(rn) & op2;
+  if (decoded->s == 1) {
+    setCPSRL(rd);
+  }
 }
 
 void eor(uint32_t rn, uint32_t op2, uint32_t rd) {
   Rg(rd) = Rg(rn) ^ op2;
+  if (decoded->s == 1) {
+    setCPSRL(rd);
+  }
 }
 
 void sub(uint32_t rn, uint32_t op2, uint32_t rd) {
   uint32_t one = 1;
   Rg(rd) = Rg(rn) + (~op2 + one);
+  if (decoded->i == 1) {
+    CPSR_ = setCPSRA();
+    if (Rg(rd) == 0) {
+      CPSR_ += (1 << 30);
+    }
+    if ((Rg(rd) & 1 << 31) == pow(2, 31)) {
+      CPSR_ += 1 << 31;
+    }
+    if (op2 > Rg(rn)) {
+      CPSR_ += 1 << 29;
+    }
+  }
 }
 
 void rsb(uint32_t rn, uint32_t op2, uint32_t rd) {
   uint32_t one = 1;
   Rg(rd) = op2 + (~Rg(rn) + one);
+  if (decoded->i == 1) {
+    CPSR_ = setCPSRA();
+    if (Rg(rd) == 0) {
+      CPSR_ += (1 << 30);
+    }
+    if ((Rg(rd) & 1 << 31) == pow(2, 31)) {
+      CPSR_ += 1 << 31;
+    }
+    if (Rg(rn) > op2) {
+      CPSR_ += 1 << 29;
+    }
+  }
 }
 
 void add(uint32_t rn, uint32_t op2, uint32_t rd) {
   Rg(rd) = Rg(rn) + op2;
+  if (decoded->s == 1) {
+    setCPSRL(rd);
+  }
 }
 
 uint32_t tst(uint32_t rn, uint32_t op2) {
   uint32_t result = Rg(rn) & op2;
   return result;
+ //////////// setCPSRL(rd);
 }
 
 uint32_t teq(uint32_t rn, uint32_t op2) {
@@ -233,7 +288,7 @@ uint32_t iIsNotSet(uint32_t op2) {
   }
 }
 
-uint32_t getOp2(void) {
+uint32_t barrelShifter(void) {
   uint32_t operand2 = decoded->op2;
   switch(decoded->i) {
     case 0: return iIsNotSet(operand2);
@@ -244,6 +299,24 @@ uint32_t getOp2(void) {
 }
 
 
+
+void multiply(void) {
+  uint32_t result = Rg(decoded->rm) * Rg(decoded->rs);
+  if (decoded->a == 1) {
+    result += Rg(decoded->rn);
+  }
+  Rg(decoded->rd) = result;
+  if (decoded->s == 1) {
+    CPSR_ = 0;
+    if (result == 0) {
+      CPSR_ += (1 << 30);
+    }
+    if (result > (pow(2, 32) - 1)) {
+      CPSR_ += (1 << 28);
+    }
+    CPSR_ += (result & (1 << 31));
+  }
+}
 
 //function to increment PC to next instruction address.
 void incrementPC(void){
@@ -266,7 +339,6 @@ void executeDecodedInstruction(void){
 
 
     decoded->pending = F;
-    
     enum mnemonic op = decoded->operation;
     
     switch (op){
@@ -292,8 +364,7 @@ void executeDecodedInstruction(void){
         case MOV : mov(decoded->op2, decoded->rd);
                    break;
         default:   break;
-  }
-    
+  } 
 }
 
 //Helper function to figure out the operation mnemonic from the 32-bit instruction.
