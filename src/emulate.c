@@ -83,9 +83,9 @@ struct decodedInstruction {
         uint32_t i;
         uint32_t a;
         uint32_t s;
-	uint32_t p;
-	uint32_t l;
-	uint32_t u;
+		uint32_t p;
+		uint32_t l;
+		uint32_t u;
         uint32_t cond;
         enum bool pending;
 } ;
@@ -260,11 +260,17 @@ void branch(uint32_t offset) {
 }
 
 
+
 // getOp2 uses this function if I is set
 uint32_t iIsSet(uint32_t op2) {
   uint32_t imm = masking(op2, 7, 0);
     uint32_t rot = masking(op2, 11, 8);
     return rotate(imm, rot);
+}
+
+void initdf(void) {
+      decoded = malloc(sizeof(struct decodedInstruction));
+      fetched = malloc(sizeof(struct fetchedInstruction));    
 }
 
 // getOp2 uses this function if I is set
