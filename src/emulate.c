@@ -48,24 +48,31 @@ uint32_t fetchFromMemory(uint16_t loc) {
 //Initialised registers to 0 and assigned each
 //register to its string name.
 Register ARMReg[REG] = {
-  {"$0", 0},
-  {"$1", 0},
-  {"$2", 0},
-  {"$3", 0},
-  {"$4", 0},
-  {"$5", 0},
-  {"$6", 0},
-  {"$7", 0},
-  {"$8", 0},
-  {"$9", 0},
-  {"$10", 0},
-  {"$11", 0},
-  {"$12", 0},
-  {"SP", 0},
-  {"LR", 0},
-  {"PC", 0},
+  {"$0",   0},
+  {"$1",   0},
+  {"$2",   0},
+  {"$3",   0},
+  {"$4",   0},
+  {"$5",   0},
+  {"$6",   0},
+  {"$7",   0},
+  {"$8",   0},
+  {"$9",   0},
+  {"$10",  0},
+  {"$11",  0},
+  {"$12",  0},
+  {"SP",   0},
+  {"LR",   0},
+  {"PC",   0},
   {"CPSR", 0}
 };
+
+
+//enumeration of instruction types.
+enum instructionType {
+    DATA_PROCESSING, MULTIPLY, SINGLE_DATA_TRANSFER, BRANCH, SPECIAL
+} ;
+
 
 //enumeration of all operation mnemonics for help with decoding and execution.
 enum mnemonic {  AND, EOR, SUB,
@@ -80,6 +87,8 @@ enum mnemonic {  AND, EOR, SUB,
 //Struct representing decoded instruction.
 struct decodedInstruction {
         enum mnemonic operation;
+        uint32_t offset;
+        uint32_t cond;
         uint32_t rd;
         uint32_t rn;
         uint32_t rm;
@@ -87,10 +96,9 @@ struct decodedInstruction {
         uint32_t i;
         uint32_t a;
         uint32_t s;
-		uint32_t p;
-		uint32_t l;
-		uint32_t u;
-        uint32_t cond;
+        uint32_t u;
+        uint32_t p;
+        uint32_t l;
         enum bool pending;
 } ;
     
@@ -274,21 +282,20 @@ uint32_t iIsSet(uint32_t op2) {
     return rotate(imm, rot);
 }
 
-
-// getOp2 uses this function if I is set
+// getOp2 uses this function if I is not set
 uint32_t iIsNotSet(uint32_t op2) {
   uint32_t shift = masking(op2, 11, 4);
   uint32_t rm = op2 & 15;
   uint32_t shiftVal = masking(op2, 11, 7);
   uint32_t shiftType = masking(op2, 6, 5);
   if ((shift & 1) == 1) {
-    shiftVal = ARMReg[masking(op2, 11, 8)].reg;
+    shiftVal = Rg(masking(op2, 11, 8));
   }
   switch(shiftType) {
-    case 0 : return lsl(ARMReg[rm].reg, shiftVal);
-    case 1 : return lsr(ARMReg[rm].reg, shiftVal);
-    case 2 : return asr(ARMReg[rm].reg, shiftVal);
-    case 3 : return ror(ARMReg[rm].reg, shiftVal);
+    case 0 : return lsl(Rg(rm), shiftVal);
+    case 1 : return lsr(Rg(rm), shiftVal);
+    case 2 : return asr(Rg(rm), shiftVal);
+    case 3 : return ror(Rg(rm), shiftVal);
     default:
     return 0;
   }
@@ -441,35 +448,157 @@ void executeDecodedInstruction(void){
                    break;
         case MOV : mov(decoded->op2, decoded->rd);
                    break;
+        case MLA : ;                 
+        case MUL : multiply();
+                   break;                   
         default:   break;
   }
     
 }
 
 //Helper function to figure out the operation mnemonic from the 32-bit instruction.
-enum mnemonic mnemonicDecoder(void){
-    return AND;
+enum instructionType mnemonicDecoder(void){
+
+    //Use the bits which are specific to different instruction types to determine
+    //The type of instruction.
+    
+    uint32_t bit27 = masking(fetched->binaryInstruction, 27, 27);
+    uint32_t bit26 = masking(fetched->binaryInstruction, 26, 26);
+    uint32_t bit25 = masking(fetched->binaryInstruction, 25, 25);
+    uint32_t bit07 = masking(fetched->binaryInstruction, 7, 7);
+    uint32_t bit04 = masking(fetched->binaryInstruction, 4, 4);
+
+    enum instructionType instructType;
+    uint32_t zero = 0;
+    uint32_t one  = 1;
+
+    //Algorithm for determining the instruction type from the determining bits.
+    //Check Piazza for detailed explanation.
+    if (fetched -> binaryInstruction == 0) {
+
+        instructType = SPECIAL;
+        
+    } else if (bit27 == one){
+    
+        instructType = BRANCH;
+        
+    } else if (bit26 == one) {
+
+        instructType = SINGLE_DATA_TRANSFER;
+        
+    } else if ((bit25 == one) || (bit04 == zero) || (bit07 == 0)) {
+
+        instructType = DATA_PROCESSING;
+        
+    } else {
+
+        instructType = MULTIPLY;
+    }
+
+    //For storing intermediate results.
+    enum mnemonic operation;
+    uint32_t      opcode;
+
+    switch (instructType) {
+
+        case BRANCH               : opcode  = masking(fetched->binaryInstruction, 31, 28);
+
+            switch(opcode) {
+
+                //Using hex values since binary isnt available.
+                
+                case 0x00: operation = BEQ; break; // 0b 0000 == eq
+                case 0x01: operation = BNE; break; // 0b 0001 != ne
+                case 0x10: operation = BGE; break; // 0b 1010 >= ge
+                case 0x11: operation = BLT; break; // 0b 1011 <  lt
+                case 0x12: operation = BGT; break; // 0b 1100 >  gt
+                case 0x13: operation = BLE; break; // 0b 1101 <= le
+                case 0x14: operation = B;   break; // 0b 1110 T  al
+                
+            } break;
+            
+        case MULTIPLY             : opcode = masking(fetched->binaryInstruction, 21, 21);
+
+            switch(opcode) {
+            
+                case 0: operation = MUL; break;
+                case 1: operation = MLA; break;
+                
+            } break;
+        
+        case DATA_PROCESSING      : opcode = masking(fetched->binaryInstruction, 24, 21);
+        
+            switch(opcode) {
+            
+                //Using hex values since binary isnt available.
+                
+                case 0x00: operation = AND; break; // 0b 0000
+                case 0x01: operation = EOR; break; // 0b 0001
+                case 0x02: operation = SUB; break; // 0b 0010
+                case 0x03: operation = RSB; break; // 0b 0011
+                case 0x04: operation = ADD; break; // 0b 0100
+                case 0x08: operation = TST; break; // 0b 1000
+                case 0x09: operation = TEQ; break; // 0b 1001
+                case 0x10: operation = CMP; break; // 0b 1010
+                case 0x12: operation = ORR; break; // 0b 1100
+                case 0x13: operation = MOV; break; // 0b 1101
+                
+            } break;
+        
+        case SINGLE_DATA_TRANSFER : opcode = masking(fetched->binaryInstruction, 20, 20) ;
+
+            switch(opcode) {
+            
+                case 0: operation = STR; break;
+                case 1: operation = LDR; break;
+                
+            } break;
+
+        case SPECIAL              : operation = ANDEQ; break;
+        
+        
+    }
+
+    decoded->operation = operation;
+    return instructType;
+    
 }
 
 //function to decoded a previously fetched instrcution.
 void decodeFetchedInstruction(void){
  
-  decoded->operation = mnemonicDecoder();
+  enum instructionType instrType = mnemonicDecoder();
   
-  switch(decoded->operation){
+  switch(instrType){
 
-        case AND : ;
-        case EOR : ;
-        case SUB : ;
-        case RSB : ;
-        case ADD : ;
-        case TST : ;
-        case TEQ : ;
-        case CMP : ;
-        case ORR : ;
-        case MOV : ; break;
-        
-        default:   break;
+        case DATA_PROCESSING :      decoded->cond     = masking(fetched->binaryInstruction, 31, 28) ;
+                                    decoded->s        = masking(fetched->binaryInstruction, 20, 20) ;
+                                    decoded->i        = masking(fetched->binaryInstruction, 25, 25) ;
+                                    decoded->rn       = masking(fetched->binaryInstruction, 19, 16) ;
+                                    decoded->rd       = masking(fetched->binaryInstruction, 15, 12) ;
+                                    decoded->op2      = masking(fetched->binaryInstruction, 11, 00) ;
+                                    break;
+        case MULTIPLY :             decoded->cond     = masking(fetched->binaryInstruction, 31, 28) ;
+                                    decoded->a        = masking(fetched->binaryInstruction, 21, 21) ;
+                                    decoded->s        = masking(fetched->binaryInstruction, 20, 20) ;
+                                    decoded->rd       = masking(fetched->binaryInstruction, 19, 16) ;
+                                    decoded->rn       = masking(fetched->binaryInstruction, 15, 12) ;
+                                    decoded->rs       = masking(fetched->binaryInstruction, 11, 08) ;
+                                    decoded->rm       = masking(fetched->binaryInstruction, 03, 00) ;
+                                    break;
+        case SINGLE_DATA_TRANSFER : decoded->cond     = masking(fetched->binaryInstruction, 31, 28) ;
+                                    decoded->i        = masking(fetched->binaryInstruction, 25, 25) ;
+                                    decoded->p        = masking(fetched->binaryInstruction, 24, 24) ;
+                                    decoded->rn       = masking(fetched->binaryInstruction, 19, 16) ;
+                                    decoded->rd       = masking(fetched->binaryInstruction, 15, 12) ;
+                                    decoded->u        = masking(fetched->binaryInstruction, 23, 23) ;
+                                    decoded->l        = masking(fetched->binaryInstruction, 20, 20) ;
+                                    decoded->offset   = masking(fetched->binaryInstruction, 11, 00) ;
+                                    break;
+        case BRANCH               : decoded->l        = masking(fetched->binaryInstruction, 31, 28) ;
+                                    decoded->offset   = masking(fetched->binaryInstruction, 23, 00) ;
+                                    break;
+        case SPECIAL              : break;
 
   }
   
@@ -477,6 +606,9 @@ void decodeFetchedInstruction(void){
   
 }
 
+//Function to print the state of the memory and registers when the program finishes.
+void printFinalState(void){
+}
 
 
  //Main Function
@@ -517,6 +649,9 @@ void decodeFetchedInstruction(void){
 
         if ( decoded->pending == T ) {
 
+            if (decoded->operation == ANDEQ) {
+                break;
+            }
             executeDecodedInstruction();
             decoded->pending = F;
 
@@ -545,8 +680,12 @@ void decodeFetchedInstruction(void){
 
      
      }
+
+     printFinalState();
      
 
-         return EXIT_SUCCESS;
+        return EXIT_SUCCESS;
 
  }
+
+ 
