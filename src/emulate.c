@@ -1,5 +1,5 @@
 
-/*
+ /*
  *  Created on: 22 May 2014
  *      Author: Group 31
  */
@@ -8,7 +8,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include <stdint.h>
-#include <assert.h>
+#include <assert.h> 
 
 //These macros make it easier to reference the registers, leading to prettier code.
 #define Rg(X)  ARMReg[(X)].reg
@@ -17,7 +17,7 @@
 #define PC_    ARMReg[15].reg
 #define CPSR_  ARMReg[16].reg
 
- //Since static const didn't work, this is an alternative
+ //Since static const didn't work, this is an alternative 
 //which is safer than just writing the number.
 enum {REG = 17, MEM = 65536};
 enum bool {F, T};
@@ -35,8 +35,9 @@ uint8_t *memPtr;
 void initMem() {
   memPtr = (uint8_t *) calloc(MEM, sizeof(uint8_t));
 
-}
+} 
 
+ 
 
 //Initialised registers to 0 and assigned each
 //register to its string name.
@@ -61,10 +62,12 @@ Register ARMReg[REG] = {
 };
 
 
+
 //enumeration of instruction types.
 enum instructionType {
     DATA_PROCESSING, MULTIPLY, SINGLE_DATA_TRANSFER, BRANCH, SPECIAL
 } ;
+
 
 
 //enumeration of all operation mnemonics for help with decoding and execution.
@@ -80,7 +83,7 @@ enum mnemonic {  AND, EOR, SUB,
 //Struct representing decoded instruction.
 struct decodedInstruction {
         enum mnemonic operation;
-        enum bool pending;       
+        enum bool pending;        
         uint32_t offset;
         uint32_t cond;
         uint32_t op2;
@@ -101,7 +104,7 @@ struct fetchedInstruction {
         uint32_t binaryInstruction;
         enum bool pending;
 } ;
-   
+    
 struct decodedInstruction *decoded;
 struct fetchedInstruction *fetched;
 
@@ -109,9 +112,9 @@ uint32_t fetchFromMem(int start) {
 
   uint32_t reversedInst = 0;
 
-  for (int i = 0; i < 4; i++) {
+  for (int i = 0; i < 4; i ++) {
 
-    uint32_t val = memPtr[start + i] << i * 8;
+    uint32_t val = memPtr[start + i] << i * 4;
     reversedInst |= val;
 
   }
@@ -134,15 +137,15 @@ void putInMem(uint32_t memAddr, uint32_t value){
 
 void initdf(void) {
       decoded = malloc(sizeof(struct decodedInstruction));
-      fetched = malloc(sizeof(struct fetchedInstruction));   
+      fetched = malloc(sizeof(struct fetchedInstruction));    
 }
 
-void printBits1(uint32_t x) {
+void printBits1(uint32_t x) { 
   int i;
   uint32_t mask = 1 << 31;
-  for(i=0; i<32; ++i) {
+  for(i=0; i<32; ++i) { 
     if((x & mask) == 0)
-      printf("0");
+      printf("0"); 
     else
       printf("1"); x = x << 1;
   }
@@ -155,7 +158,7 @@ void printBits1(uint32_t x) {
     PC_,SD_,LR & CPSR_ are similarly replaced with their respective registers.
 */
 
-// Since V bit is unaffected, this funtion preserves the 28th bit of the CPSR
+// Since V bit is unaffected, this funtion preserves the 28th bit of the CPSR 
     //and initialises eveything else to zero
 uint32_t setCPSRA() {
   CPSR_ &= (1 << 28);
@@ -279,6 +282,7 @@ uint32_t rotate(uint32_t imm, uint32_t n) {
   }
   return imm;
 }
+
 
 
 //Opcode and operation for when operand2 is not an immediate constant.
@@ -723,9 +727,9 @@ void decodeFetchedInstruction(void){
         case SPECIAL              : break;
 
   }
- 
+  
   decoded->pending = T;
- 
+  
 }
 
 //Function to print the state of the memory and registers when the program finishes.
@@ -738,11 +742,11 @@ void printFinalState(void){
 
 }
  }
- 
- printf("Non-zero memory:\n");
+
+ printf("Non-zero memory: \n");
  for (int count = 0; count < 16384; count+=4) {
   if (fetchFromMem(count)!=0) {
-    printf("0x%08x: 0x%02x%02x%02x%02x\n", (count), memPtr[count], memPtr[count + 1],
+    printf("0x%08x: 0x%02x%02x%02x%02x \n", (count), memPtr[count], memPtr[count + 1],
     memPtr[count + 2], memPtr[count + 3]);
   }
 }
@@ -762,8 +766,8 @@ void printFinalState(void){
              perror( " Error: Could not open file. \n" );
              exit(EXIT_FAILURE);
      }
-    
-    
+     
+     
      /* Calculate file size and then from the size, the number of 32-bit instructions in the file */
      fseek( file, 0, SEEK_END );
      int instructionsSize = ftell(file);
@@ -777,12 +781,13 @@ void printFinalState(void){
 
 
 
+
      //Pipeline execution of instructions.
-   
+    
      //main pipeline loop.
      while ( T ) { //Loops infinitely until halt instruction is called
 
-
+	
 
         if ( decoded->pending == T ) {
 
@@ -809,22 +814,24 @@ void printFinalState(void){
 
             fetchNextInstruction();
             fetched->pending = T;
-           
+            
         } else if (decoded->pending == F) {
-       
+        
             break;
-           
+            
         }
 
 
         incrementPC();
 
-    
+     
      }
 
      printFinalState();
-    
+     
 
         return EXIT_SUCCESS;
 
  }
+
+ 
