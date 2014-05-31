@@ -9,6 +9,13 @@
 #include <stdint.h>
 #include <assert.h> 
 
+//These macros make it easier to reference the registers, leading to prettier code.
+#define Rg(X)  ARMReg[(X)].reg
+#define SP_    ARMReg[13].reg
+#define LR_    ARMReg[14].reg
+#define PC_    ARMReg[15].reg
+#define CPSR_  ARMReg[16].reg
+
  //Since static const didn't work, this is an alternative 
 //which is safer than just writing the number.
 enum {REG = 17, MEM = 65536};
@@ -29,32 +36,35 @@ void initMem() {
 
 } 
 
+
 //Initialised registers to 0 and assigned each
 //register to its string name.
 Register ARMReg[REG] = {
-  {"$0", 0},
-  {"$1", 0},
-  {"$2", 0},
-  {"$3", 0},
-  {"$4", 0},
-  {"$5", 0},
-  {"$6", 0},
-  {"$7", 0},
-  {"$8", 0},
-  {"$9", 0},
-  {"$10", 0},
-  {"$11", 0},
-  {"$12", 0},
-  {"SP", 0},
-  {"LR", 0},
-  {"PC", 0},
+  {"$0",   0},
+  {"$1",   0},
+  {"$2",   0},
+  {"$3",   0},
+  {"$4",   0},
+  {"$5",   0},
+  {"$6",   0},
+  {"$7",   0},
+  {"$8",   0},
+  {"$9",   0},
+  {"$10",  0},
+  {"$11",  0},
+  {"$12",  0},
+  {"SP",   0},
+  {"LR",   0},
+  {"PC",   0},
   {"CPSR", 0}
 };
 
-//These macros make it easier to reference the registers, leading to prettier code.
-#define Rg(X)  ARMReg[(X)].reg
-#define PC_    ARMReg[15].reg
-#define CPSR_  ARMReg[16].reg
+
+//enumeration of instruction types.
+enum instructionType {
+    DATA_PROCESSING, MULTIPLY, SINGLE_DATA_TRANSFER, BRANCH, SPECIAL
+} ;
+
 
 //enumeration of all operation mnemonics for help with decoding and execution.
 enum mnemonic {  AND, EOR, SUB,
@@ -69,19 +79,20 @@ enum mnemonic {  AND, EOR, SUB,
 //Struct representing decoded instruction.
 struct decodedInstruction {
         enum mnemonic operation;
+        enum bool pending;        
+        uint32_t offset;
+        uint32_t cond;
+        uint32_t op2;
         uint32_t rd;
         uint32_t rn;
         uint32_t rs;
         uint32_t rm;
-        uint32_t op2;
         uint32_t i;
         uint32_t a;
         uint32_t s;
-		    uint32_t p;
-		    uint32_t l;
-		    uint32_t u;
-        uint32_t cond;
-        enum bool pending;
+        uint32_t u;
+        uint32_t p;
+        uint32_t l;
 } ;
     
 //Struct representing fetched instruction.
@@ -92,6 +103,33 @@ struct fetchedInstruction {
     
 struct decodedInstruction *decoded;
 struct fetchedInstruction *fetched;
+
+uint32_t fetchFromMem(int start) {
+
+  uint32_t reversedInst = 0;
+
+  for (int i = 0; i < 4; i ++) {
+
+    uint32_t val = memPtr[start + i] << i * 4;
+    reversedInst |= val;
+
+  }
+
+  return reversedInst;
+
+}
+
+void putInMem(uint32_t memAddr, uint32_t value){
+  uint32_t val = 0;
+  uint32_t charmask = (0xff);
+  for (int i = 3; i > 0; i --) {
+    val = (value & charmask) << i * 8;
+    charmask <<= i * 6;
+  }
+  memPtr[memAddr] = val;
+
+}
+
 
 void initdf(void) {
       decoded = malloc(sizeof(struct decodedInstruction));
@@ -287,10 +325,11 @@ uint32_t ror(uint32_t rmVal, uint32_t shift) {
 
 //Branch Instructions
 //May or may not be right
+//Executed if checkCond(instruction)
 void branch(uint32_t offset) {
 	offset <<= 2 ;
 	PC_ = offset + 8;
-	(fetched-> pending) = F;
+	(fetched -> pending) = F;
 	(decoded -> pending) = F;
 }
 
@@ -303,8 +342,7 @@ uint32_t iIsSet(uint32_t op2) {
     return rotate(imm, rot);
 }
 
-
-// barrelShifter uses this function if I is set
+// getOp2 uses this function if I is not set
 uint32_t iIsNotSet(uint32_t op2) {
   uint32_t shift = getVal(op2, 11, 4);
   uint32_t rm = op2 & 15;
@@ -314,10 +352,10 @@ uint32_t iIsNotSet(uint32_t op2) {
     shiftVal = ARMReg[getVal(op2, 11, 8)].reg;
   }
   switch(shiftType) {
-    case 0 : return lsl(ARMReg[rm].reg, shiftVal);
-    case 1 : return lsr(ARMReg[rm].reg, shiftVal);
-    case 2 : return asr(ARMReg[rm].reg, shiftVal);
-    case 3 : return ror(ARMReg[rm].reg, shiftVal);
+    case 0 : return lsl(Rg(rm), shiftVal);
+    case 1 : return lsr(Rg(rm), shiftVal);
+    case 2 : return asr(Rg(rm), shiftVal);
+    case 3 : return ror(Rg(rm), shiftVal);
     default:
     return 0;
   }
@@ -337,6 +375,8 @@ uint32_t getOp2(void) {
 
 void ldr(uint32_t arg) {
 
+	if (decoded ->l == 1) {
+
 	uint32_t offset = 0;
 	uint32_t result = 0;
 
@@ -350,29 +390,35 @@ void ldr(uint32_t arg) {
 		break;
 	} 
 
+	//If P is set, offset is added/subtracted before transferring data
 	if (decoded -> p == 1) {
+		//If u is set, offset is added
 		if (decoded -> u == 1) {
 			result = Rg(decoded -> rn) + offset;
 		} else {
 			result = Rg(decoded -> rn) - offset;
 		}
-
-		Rg(decoded->rd) = memPtr[result];
+		//Data is transferred
+		Rg(decoded->rd) = fetchFromMem(result);
 
 	} else {
-		
-		Rg(decoded->rd) = memPtr[offset];
-
+		//Data is transferred
+		Rg(decoded->rd) = fetchFromMem(offset);
+		//If u is set, offset is added
 		if (decoded -> u == 1) {
 			Rg(decoded -> rn) += offset;
 		} else {
 			Rg(decoded -> rn) -= offset;
 		}
 	}
+
+	}
 	 
 }
 
 void str(uint32_t arg) {
+
+	if (decoded -> l == 0) {
 	
 	uint32_t offset = 0;
 	uint32_t result = 0;
@@ -387,27 +433,33 @@ void str(uint32_t arg) {
 		break;
 	} 
 
+	//If P is set, offset is added/subtracted before transferring data
 	if (decoded -> p == 1) {
+		//If u is set, offset is added
 		if (decoded -> u == 1) {
 			result = Rg(decoded -> rn) + offset;
 		} else {
 			result = Rg(decoded -> rn) - offset;
 		}
-
-		memPtr[result] = Rg(decoded -> rd);
+		//Data is transferred
+		putInMem((result) , Rg(decoded -> rd));
 
 	} else {
-		
-		memPtr[offset] = Rg(decoded->rd);
-
+		//Data is transferred
+		putInMem((offset) , Rg(decoded->rd));
+		//If u is set, offset is added
 		if (decoded -> u == 1) {
 			Rg(decoded -> rn) += offset;
 		} else {
 			Rg(decoded -> rn) -= offset;
 		}
 	}
+
+	}
 	 
 }
+
+        
  
 
 void multiply(void) {
@@ -428,7 +480,7 @@ void multiply(void) {
 //function to increment PC to next instruction address.
 void incrementPC(void){
 
-    PC_ += 1;//PC_ is a macro defined earlier
+    PC_ += 4;//PC_ is a macro defined earlier
 
 }
 
@@ -436,7 +488,7 @@ void incrementPC(void){
 //function to fetch the instruction at the current instruction address stored in PC.
 void fetchNextInstruction(void){
 
-    fetched->binaryInstruction = PC_; //PC_ is a macro defined earlier.
+    fetched->binaryInstruction = fetchFromMem(PC_); //PC_ is a macro defined earlier.
     fetched->pending = T;
     
 }
@@ -470,34 +522,168 @@ void executeDecodedInstruction(void){
                    break;
         case MOV : mov(decoded->op2, decoded->rd);
                    break;
+        case MLA : ;                 
+        case MUL : multiply();
+                   break;        
+        case LDR : ldr(decoded->offset);
+                   break;         
+        case STR : str(decoded->offset);
+                   break;
+        case BEQ : ;
+        case BNE : ;
+        case BGE : ;
+        case BLT : ;
+        case BGT : ;
+        case BLE : ;
+        case B   : branch(decoded->offset);
+                   break;         
         default:   break;
   } 
 }
 
 //Helper function to figure out the operation mnemonic from the 32-bit instruction.
-enum mnemonic mnemonicDecoder(void){
-    return AND;
+enum instructionType mnemonicDecoder(void){
+
+    //Use the bits which are specific to different instruction types to determine
+    //The type of instruction.
+    
+    uint32_t bit27 = getVal(fetched->binaryInstruction, 27, 27);
+    uint32_t bit26 = getVal(fetched->binaryInstruction, 26, 26);
+    uint32_t bit25 = getVal(fetched->binaryInstruction, 25, 25);
+    uint32_t bit07 = getVal(fetched->binaryInstruction, 7, 7);
+    uint32_t bit04 = getVal(fetched->binaryInstruction, 4, 4);
+
+    enum instructionType instructType;
+    uint32_t zero = 0;
+    uint32_t one  = 1;
+
+    //Algorithm for determining the instruction type from the determining bits.
+    //Check Piazza for detailed explanation.
+    if (fetched -> binaryInstruction == 0) {
+
+        instructType = SPECIAL;
+        
+    } else if (bit27 == one){
+    
+        instructType = BRANCH;
+        
+    } else if (bit26 == one) {
+
+        instructType = SINGLE_DATA_TRANSFER;
+        
+    } else if ((bit25 == one) || (bit04 == zero) || (bit07 == 0)) {
+
+        instructType = DATA_PROCESSING;
+        
+    } else {
+
+        instructType = MULTIPLY;
+    }
+
+    //For storing intermediate results.
+    enum mnemonic operation;
+    uint32_t      opcode;
+
+    switch (instructType) {
+
+        case BRANCH               : opcode  = getVal(fetched->binaryInstruction, 31, 28);
+
+            switch(opcode) {
+
+                //Using hex values since binary isnt available.
+                
+                case 0x0 : operation = BEQ; break; // 0b 0000 == eq
+                case 0x1 : operation = BNE; break; // 0b 0001 != ne
+                case 0xA : operation = BGE; break; // 0b 1010 >= ge
+                case 0xB : operation = BLT; break; // 0b 1011 <  lt
+                case 0xC : operation = BGT; break; // 0b 1100 >  gt
+                case 0xD : operation = BLE; break; // 0b 1101 <= le
+                case 0xE : operation = B;   break; // 0b 1110 T  al
+                
+            } break;
+            
+        case MULTIPLY             : opcode = getVal(fetched->binaryInstruction, 21, 21);
+
+            switch(opcode) {
+            
+                case 0: operation = MUL; break;
+                case 1: operation = MLA; break;
+                
+            } break;
+        
+        case DATA_PROCESSING      : opcode = getVal(fetched->binaryInstruction, 24, 21);
+        
+            switch(opcode) {
+            
+                //Using hex values since binary isnt available.
+                
+                case 0x0 : operation = AND; break; // 0b 0000
+                case 0x1 : operation = EOR; break; // 0b 0001
+                case 0x2 : operation = SUB; break; // 0b 0010
+                case 0x3 : operation = RSB; break; // 0b 0011
+                case 0x4 : operation = ADD; break; // 0b 0100
+                case 0x8 : operation = TST; break; // 0b 1000
+                case 0x9 : operation = TEQ; break; // 0b 1001
+                case 0xA : operation = CMP; break; // 0b 1010
+                case 0xC : operation = ORR; break; // 0b 1100
+                case 0xD : operation = MOV; break; // 0b 1101
+                
+            } break;
+        
+        case SINGLE_DATA_TRANSFER : opcode = getVal(fetched->binaryInstruction, 20, 20) ;
+
+            switch(opcode) {
+            
+                case 0: operation = STR; break;
+                case 1: operation = LDR; break;
+                
+            } break;
+
+        case SPECIAL              : operation = ANDEQ; break;
+        
+        
+    }
+
+    decoded->operation = operation;
+    return instructType;
+    
 }
 
 //function to decoded a previously fetched instrcution.
 void decodeFetchedInstruction(void){
  
-  decoded->operation = mnemonicDecoder();
+  enum instructionType instrType = mnemonicDecoder();
   
-  switch(decoded->operation){
+  switch(instrType){
 
-        case AND : ;
-        case EOR : ;
-        case SUB : ;
-        case RSB : ;
-        case ADD : ;
-        case TST : ;
-        case TEQ : ;
-        case CMP : ;
-        case ORR : ;
-        case MOV : ; break;
-        
-        default:   break;
+        case DATA_PROCESSING :      decoded->cond     = getVal(fetched->binaryInstruction, 31, 28) ;
+                                    decoded->s        = getVal(fetched->binaryInstruction, 20, 20) ;
+                                    decoded->i        = getVal(fetched->binaryInstruction, 25, 25) ;
+                                    decoded->rn       = getVal(fetched->binaryInstruction, 19, 16) ;
+                                    decoded->rd       = getVal(fetched->binaryInstruction, 15, 12) ;
+                                    decoded->op2      = getVal(fetched->binaryInstruction, 11,  0) ;
+                                    break;
+        case MULTIPLY :             decoded->cond     = getVal(fetched->binaryInstruction, 31, 28) ;
+                                    decoded->a        = getVal(fetched->binaryInstruction, 21, 21) ;
+                                    decoded->s        = getVal(fetched->binaryInstruction, 20, 20) ;
+                                    decoded->rd       = getVal(fetched->binaryInstruction, 19, 16) ;
+                                    decoded->rn       = getVal(fetched->binaryInstruction, 15, 12) ;
+                                    decoded->rs       = getVal(fetched->binaryInstruction, 11,  8) ;
+                                    decoded->rm       = getVal(fetched->binaryInstruction,  3,  0) ;
+                                    break;
+        case SINGLE_DATA_TRANSFER : decoded->cond     = getVal(fetched->binaryInstruction, 31, 28) ;
+                                    decoded->i        = getVal(fetched->binaryInstruction, 25, 25) ;
+                                    decoded->p        = getVal(fetched->binaryInstruction, 24, 24) ;
+                                    decoded->rn       = getVal(fetched->binaryInstruction, 19, 16) ;
+                                    decoded->rd       = getVal(fetched->binaryInstruction, 15, 12) ;
+                                    decoded->u        = getVal(fetched->binaryInstruction, 23, 23) ;
+                                    decoded->l        = getVal(fetched->binaryInstruction, 20, 20) ;
+                                    decoded->offset   = getVal(fetched->binaryInstruction, 11,  0) ;
+                                    break;
+        case BRANCH               : decoded->l        = getVal(fetched->binaryInstruction, 31, 28) ;
+                                    decoded->offset   = getVal(fetched->binaryInstruction, 23,  0) ;
+                                    break;
+        case SPECIAL              : break;
 
   }
   
@@ -505,6 +691,26 @@ void decodeFetchedInstruction(void){
   
 }
 
+//Function to print the state of the memory and registers when the program finishes.
+void printFinalState(void){
+ printf("Registers: \n");
+ for (int i = 0; i<13; i++) {
+   printf("%s\t:\t%i (0x%08x) \n", ARMReg[(i)].ident, Rg(i), Rg(i) );
+ }
+
+ for (int i =15; i<17; i++) {
+   printf("%s  :\t%i (0x%08x) \n", ARMReg[(i)].ident, ARMReg[i].reg,
+ARMReg[i].reg );
+ }
+
+ printf("Non-zero memory: \n");
+ for (int count = 0; count < 16384; count+=4) {
+  if (fetchFromMem(count)!=0) {
+    printf("0x%08x: 0x%02x%02x%02x%02x \n", (count), memPtr[count], memPtr[count + 1],
+    memPtr[count + 2], memPtr[count + 3]);
+  }
+}
+}
 
 
  //Main Function
@@ -523,13 +729,12 @@ void decodeFetchedInstruction(void){
      
      
      /* Calculate file size and then from the size, the number of 32-bit instructions in the file */
-     const int bytesPerInstruction = 4;
      fseek( file, 0, SEEK_END );
-     int instructionsSize = ftell(file)/bytesPerInstruction;
+     int instructionsSize = ftell(file);
      fseek( file, 0, SEEK_SET );
 
      //Load the binary data into the memory array.
-     fread(memPtr, bytesPerInstruction, instructionsSize, file );
+     fread(memPtr, 1, instructionsSize, file );
 
      /* file closing */
      fclose(file);
@@ -545,9 +750,16 @@ void decodeFetchedInstruction(void){
 
         if ( decoded->pending == T ) {
 
-            executeDecodedInstruction();
-            decoded->pending = F;
+            if (decoded->operation == ANDEQ) { //check for special halt instruction
+                break;
+            }
 
+            if ( T ) { //check if conditions match CPSR
+                executeDecodedInstruction();
+            }
+            
+                decoded->pending = F;
+            
         }
 
         if ( fetched->pending == T ) {
@@ -573,8 +785,12 @@ void decodeFetchedInstruction(void){
 
      
      }
+
+     printFinalState();
      
 
-         return EXIT_SUCCESS;
+        return EXIT_SUCCESS;
 
  }
+
+ 
