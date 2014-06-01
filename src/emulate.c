@@ -111,6 +111,7 @@ uint32_t fetchFromMem(uint32_t start) {
   for (int i = 0; i < 4; i++) {
     uint32_t val = memPtr[start + i] << (i * 8);
     reversedInst |= val;
+
   }
 
   return reversedInst;
@@ -179,6 +180,8 @@ void setCPSRL(uint32_t result) {
     if ((result & (1 << 31)) == pow(2, 31)) {
       CPSR_ += (1 << 31);
     }
+
+  }
 }
 
 uint32_t tst(uint32_t rn, uint32_t op2) {
@@ -705,7 +708,7 @@ void decodeFetchedInstruction(void){
                                     break;
         case SINGLE_DATA_TRANSFER : decoded->cond     = getVal(fetched->binaryInstruction, 31, 28) ;
                                     decoded->i        = getVal(fetched->binaryInstruction, 25, 25) ;
-                                    decoded->s        = 0;
+                                decoded->s        = 0;
                                     decoded->p        = getVal(fetched->binaryInstruction, 24, 24) ;
                                     decoded->rn       = getVal(fetched->binaryInstruction, 19, 16) ;
                                     decoded->rd       = getVal(fetched->binaryInstruction, 15, 12) ;
