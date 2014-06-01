@@ -269,7 +269,8 @@ uint32_t getVal(uint32_t inst, int left, int right) {
 }
 
 uint32_t rotate(uint32_t imm, uint32_t n) {
-  while (n > 0) {
+  n *= 2;
+  while ( n > 0) {
     uint32_t zerobit = 1 & imm;
     zerobit <<= 31;
     imm >>= 1;
@@ -291,11 +292,17 @@ uint32_t lsl(uint32_t rm, uint32_t shift) {
   return rm << shift;
 }
 
-uint32_t lsr(uint32_t rm, uint32_t shift) {
-  return rm >> shift;
+uint32_t lsr(uint32_t rmVal, uint32_t shift) {
+  if (decoded->s == 1) {
+  CPSR_ += (getVal(rmVal, shift - 1, shift - 1)) >> (shift -1);
+  }
+  return rmVal >> shift;
 }
 
 uint32_t asr(uint32_t rmVal, uint32_t shift) {
+  if (decoded->s == 1) {
+  CPSR_ += (getVal(rmVal, shift - 1, shift - 1)) >> (shift -1);
+  }
   uint32_t bit31 = rmVal & (1 << 31);
   while (shift > 0) {
     rmVal >>= 1;
@@ -316,8 +323,12 @@ uint32_t ror(uint32_t rmVal, uint32_t shift) {
 //May or may not be right
 //Executed if checkCond(instruction)
 void branch(uint32_t offset) {
+        uint32_t sign = getVal(offset, 23, 23);
         offset <<= 2 ;
-        PC_ = offset + 8;
+        if (sign == 1) {
+          offset += 0xfc000000;
+        }
+        PC_ += offset;
         (fetched -> pending) = F;
         (decoded -> pending) = F;
 }
@@ -348,10 +359,10 @@ uint32_t iIsNotSet(uint32_t op2) {
     case 0 : 
 	     return lsl(Rg(rm), shiftVal);
    	     break;
-    case 1 : if (decoded->s == 1) CPSR_ += (getVal(rm, 3, 3)) << 29;
+    case 1 : 
   	     return lsr(Rg(rm), shiftVal);
              break;
-    case 2 : if (decoded->s == 1) CPSR_ += (getVal(rm, 3, 3)) << 29;
+    case 2 : 
              return asr(Rg(rm), shiftVal);
              break;
     case 3 : 
@@ -789,7 +800,7 @@ void printFinalState(void){
                 break;
             }
 
-            if ( checkCond() ) { //check if conditions match CPSR
+            if ( checkCond() | (decoded->operation == B )) { //check if conditions match CPSR
 
                 executeDecodedInstruction();
             }
@@ -817,9 +828,9 @@ void printFinalState(void){
 
 
         incrementPC();
-
     
      }
+     
 
      printFinalState();
     
