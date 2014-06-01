@@ -119,15 +119,14 @@ uint32_t fetchFromMem(int start) {
 
 }
 
-void putInMem(uint32_t memAddr, uint32_t value){
-  uint32_t val = 0;
-  uint32_t charmask = (0xff);
-  for (int i = 3; i > 0; i --) {
-    val = (value & charmask) << i * 8;
-    charmask <<= i * 6;
+void putInMem(uint32_t memAddr, uint32_t value) {
+  uint8_t val = 0;
+  uint32_t mask = 0xff000000; 
+  for (int i=3; i>=0; i--) {
+    val = (value & mask) >> i*8 ;
+    memPtr[memAddr + i] = val;
+    mask >>= 8;  
   }
-  memPtr[memAddr] = val;
-
 }
 
 
@@ -387,16 +386,14 @@ uint32_t getOp2(void) {
 
 void ldr(uint32_t arg) {
 
-        if (decoded ->l == 1) {
-
-        uint32_t offset = 0;
-        uint32_t result = 0;
+        uint32_t offset;
+        uint32_t result;
 
         //If I is set, arg is interpreted as a shift register, otherwise 12 bit offset
         switch (decoded -> i) {
-                case 1 : offset = iIsSet(arg);
+                case 1 : offset = iIsNotSet(arg);
                 break;
-                case 0 : offset = arg;
+                case 0 : offset = iIsSet(arg);
                 break;
                 default : ;
                 break;
@@ -411,11 +408,19 @@ void ldr(uint32_t arg) {
                         result = Rg(decoded -> rn) - offset;
                 }
                 //Data is transferred
-                Rg(decoded->rd) = fetchFromMem(result);
+		if ( result>65532) {
+			printf("Error: Out of bounds memory access at address 0x%08x\n", result);
+		} else {
+                	Rg(decoded->rd) = fetchFromMem(result);
+		}
 
         } else {
                 //Data is transferred
-                Rg(decoded->rd) = fetchFromMem(offset);
+                if (offset>65532) {
+			printf("Error: Out of bounds memory access at address 0x%08x\n", offset);
+		} else {
+                	Rg(decoded->rd) = fetchFromMem(offset);
+		}
                 //If u is set, offset is added
                 if (decoded -> u == 1) {
                         Rg(decoded -> rn) += offset;
@@ -423,23 +428,19 @@ void ldr(uint32_t arg) {
                         Rg(decoded -> rn) -= offset;
                 }
         }
-
-        }
-        
+       
 }
 
 void str(uint32_t arg) {
-
-        if (decoded -> l == 0) {
-       
-        uint32_t offset = 0;
-        uint32_t result = 0;
+      
+        uint32_t offset;
+        uint32_t result;
 
         //If I is set, arg is interpreted as a shift register, otherwise 12 bit offset
         switch (decoded -> i) {
-                case 1 : offset = iIsSet(arg);
+                case 1 : offset = iIsNotSet(arg);
                 break;
-                case 0 : offset = arg;
+                case 0 : offset = iIsSet(arg);
                 break;
                 default : ;
                 break;
@@ -454,11 +455,19 @@ void str(uint32_t arg) {
                         result = Rg(decoded -> rn) - offset;
                 }
                 //Data is transferred
-                putInMem((result) , Rg(decoded -> rd));
-
+		if (result <= 65532) {
+                  putInMem(result, Rg(decoded -> rd));
+		} else {
+		  printf("Error: Out of bounds memory access at address 0x%08x\n", result);
+                }
         } else {
                 //Data is transferred
-                putInMem((offset) , Rg(decoded->rd));
+                if (offset <= 65532) {
+                  putInMem((offset) , Rg(decoded->rd));
+		} else {
+		  printf("Error: Out of bounds memory access at address 0x%08x\n", offset);
+                }
+		
                 //If u is set, offset is added
                 if (decoded -> u == 1) {
                         Rg(decoded -> rn) += offset;
@@ -466,9 +475,6 @@ void str(uint32_t arg) {
                         Rg(decoded -> rn) -= offset;
                 }
         }
-
-        }
-        
 }
 
        
