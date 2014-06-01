@@ -118,23 +118,74 @@ uint32_t fetchFromMem(uint32_t start) {
 
 }
 
+enum bool checkGPIOL(uint32_t mem, uint32_t rd) { //check if loading from GPIO address
+  if (mem == 0x20200000) {
+    printf("One GPIO pin from 0 to 9 has been accessed\n");
+    Rg(rd) = mem;
+    return T;
+  }
+  if (mem == 0x20200004) {
+    printf("One GPIO pin from 10 to 19 has been accessed\n");
+    Rg(rd) = mem;
+    return T;
+  }
+  if (mem == 0x20200008) {
+    printf("One GPIO pin from 20 to 29 has been accessed\n");
+    Rg(rd) = mem;
+    return T;
+  }
+  
+  return F;
+}
+
 void fromMemtoReg(uint32_t off, uint32_t rd) {
+  if (!checkGPIOL(off, rd)){
   if (off > 65536) {
     printf("Error: Out of bounds memory access at address 0x%08x\n", off);
     return;
   }
   Rg(rd) = fetchFromMem(off);
+  }
 }
 
 
+enum bool checkGPIOS(uint32_t mem, uint32_t val) { //check if storing to GPIO address
+  if (mem == 0x20200000) {
+    printf("One GPIO pin from 0 to 9 has been accessed\n");
+    return T;
+  }
+  if (mem == 0x20200004) {
+    printf("One GPIO pin from 10 to 19 has been accessed\n");
+    return T;
+  }
+  if (mem == 0x20200008) {
+    printf("One GPIO pin from 20 to 29 has been accessed\n");
+    return T;
+  }
+  
+  if (mem == 0x2020001c) {
+    printf("PIN ON\n");
+    return T;
+  }
+  if (mem == 0x20200028) {
+    printf("PIN OFF\n");
+    return T;
+  }
+
+  
+  return F;
+}
+
 
 void putInMem(uint32_t memAddr, uint32_t value) {
+if (!checkGPIOS(memAddr, value)) {
  uint8_t val = 0;
  uint32_t mask = 0xff000000;
  for (int i=3; i>=0; i--) {
  val = (value & mask) >> (i*8) ;
  memPtr[memAddr + i] = val;
  mask >>= 8;
+ }
  }
 }
 
@@ -180,8 +231,6 @@ void setCPSRL(uint32_t result) {
     if ((result & (1 << 31)) == pow(2, 31)) {
       CPSR_ += (1 << 31);
     }
-
-  }
 }
 
 uint32_t tst(uint32_t rn, uint32_t op2) {
@@ -208,7 +257,6 @@ uint32_t cmp(uint32_t rn, uint32_t op2) {
     CPSR_ += (1 << 29);
     }
   }
-  //printf("%i\n", CPSR_);
   return result;
 }
 
@@ -348,11 +396,11 @@ uint32_t iIsNotSet(uint32_t op2) {
     CPSR_ = setCPSRA();
   }
   uint32_t shift = getVal(op2, 11, 4);
-  uint32_t rm = op2 & 15;
+  uint32_t rm = op2 & 15;// gives the last 4 bits for op2.
   uint32_t shiftVal = getVal(op2, 11, 7);
   uint32_t shiftType = getVal(op2, 6, 5);
   if ((shift & 1) == 1) {
-    shiftVal = ARMReg[getVal(op2, 11, 8)].reg;
+    shiftVal = Rg(getVal(op2, 11, 8));
   }
   switch(shiftType) {
     case 0 : 
@@ -367,7 +415,7 @@ uint32_t iIsNotSet(uint32_t op2) {
     case 3 : 
              return ror(Rg(rm), shiftVal);
              break;
-    default:
+    default :
     return 0;
   }
 }
@@ -385,7 +433,6 @@ uint32_t getOp2(void) {
 //Single Data Transfer Instructions
 
 void ldr(uint32_t arg) {
-
         uint32_t offset;
         uint32_t result;
 
@@ -409,16 +456,18 @@ void ldr(uint32_t arg) {
                 }
                 //Data is transferred
                 fromMemtoReg(result, decoded->rd);
-
         } else {
-                //Data is transferred
-                fromMemtoReg(decoded->rd, offset);
-                //If u is set, offset is added
-                if (decoded -> u == 1) {
-                        Rg(decoded -> rn) += offset;
-                } else {
-                        Rg(decoded -> rn) -= offset;
-                }
+                //Data is transferred 
+                
+                fromMemtoReg(offset, decoded->rd);
+
+               //If u is set, offset is added
+               if (decoded -> u == 1) {
+                     Rg(decoded -> rn) += offset;
+               } else {
+                     Rg(decoded -> rn) -= offset;
+               }
+                
         }
         
 }
@@ -468,12 +517,15 @@ void multiply(void) {
     result += Rg(decoded->rn);
   }
   Rg(decoded->rd) = result;
+  setCPSRL(result);
   if (decoded->s == 1) {
-    CPSR_ = 0;
+    setCPSRA();
     if (result == 0) {
       CPSR_ += (1 << 30);
     }
-    CPSR_ += (result & (1 << 31));
+    if ((result & (1 << 31)) == pow(2, 31)) {
+      CPSR_ += (1 << 31);
+    };
   }
 }
 
@@ -708,7 +760,7 @@ void decodeFetchedInstruction(void){
                                     break;
         case SINGLE_DATA_TRANSFER : decoded->cond     = getVal(fetched->binaryInstruction, 31, 28) ;
                                     decoded->i        = getVal(fetched->binaryInstruction, 25, 25) ;
-                                decoded->s        = 0;
+                                    decoded->s        = 0; //because lsr is called by ldr
                                     decoded->p        = getVal(fetched->binaryInstruction, 24, 24) ;
                                     decoded->rn       = getVal(fetched->binaryInstruction, 19, 16) ;
                                     decoded->rd       = getVal(fetched->binaryInstruction, 15, 12) ;
@@ -716,9 +768,8 @@ void decodeFetchedInstruction(void){
                                     decoded->l        = getVal(fetched->binaryInstruction, 20, 20) ;
                                     decoded->offset   = getVal(fetched->binaryInstruction, 11,  0) ;
                                     break;
-        case BRANCH               : decoded->l        = getVal(fetched->binaryInstruction, 31, 28) ;
+        case BRANCH               : decoded->cond        = getVal(fetched->binaryInstruction, 31, 28) ;
                                     decoded->offset   = getVal(fetched->binaryInstruction, 23,  0) ;
-                                    decoded->s        = 0;
                                     break;
         case SPECIAL              : break;
 
@@ -790,7 +841,7 @@ void printFinalState(void){
                 break;
             }
 
-            if ( checkCond() | (decoded->operation == B)) { //check if conditions match CPSR
+            if ( checkCond()) { //check if conditions match CPSR
 
                 executeDecodedInstruction();
             }
