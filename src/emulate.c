@@ -104,30 +104,37 @@ struct fetchedInstruction {
 struct decodedInstruction *decoded;
 struct fetchedInstruction *fetched;
 
-uint32_t fetchFromMem(int start) {
-
+uint32_t fetchFromMem(uint32_t start) {
+  
   uint32_t reversedInst = 0;
 
   for (int i = 0; i < 4; i++) {
-
-    uint32_t val = memPtr[start + i] << i * 8;
+    uint32_t val = memPtr[start + i] << (i * 8);
     reversedInst |= val;
-
   }
 
   return reversedInst;
 
 }
 
-void putInMem(uint32_t memAddr, uint32_t value){
-  uint32_t val = 0;
-  uint32_t charmask = (0xff);
-  for (int i = 3; i > 0; i --) {
-    val = (value & charmask) << i * 8;
-    charmask <<= i * 6;
+void fromMemtoReg(uint32_t off, uint32_t rd) {
+  if (off > 65536) {
+    printf("Error: Out of bounds memory access at address 0x%08x\n", off);
+    return;
   }
-  memPtr[memAddr] = val;
+  Rg(rd) = fetchFromMem(off);
+}
 
+
+
+void putInMem(uint32_t memAddr, uint32_t value) {
+ uint8_t val = 0;
+ uint32_t mask = 0xff000000;
+ for (int i=3; i>=0; i--) {
+ val = (value & mask) >> (i*8) ;
+ memPtr[memAddr + i] = val;
+ mask >>= 8;
+ }
 }
 
 
@@ -156,107 +163,93 @@ void printBits1(uint32_t x) {
 
 // Since V bit is unaffected, this funtion preserves the 28th bit of the CPSR
     //and initialises eveything else to zero
+
+
+/////////////////Data Processing
 uint32_t setCPSRA() {
   CPSR_ &= (1 << 28);
   return CPSR_;
 }
 
-void setCPSRL(uint32_t rd) {
-  if (decoded->s == 1) {
+void setCPSRL(uint32_t result) {
     CPSR_ = setCPSRA();
-    if (Rg(rd) == 0) {
+    if (result == 0) {
       CPSR_ += (1 << 30);
     }
-    if ((Rg(rd) & (1 << 31)) == pow(2, 31)) {
-      CPSR_ += 1 << 31;
+    if ((result & (1 << 31)) == pow(2, 31)) {
+      CPSR_ += (1 << 31);
     }
-
-  }
-}
-
-
-void and(uint32_t rn, uint32_t op2, uint32_t rd) {
-  Rg(rd) = Rg(rn) & op2;
-  if (decoded->s == 1) {
-    setCPSRL(rd);
-  }
-}
-
-void eor(uint32_t rn, uint32_t op2, uint32_t rd) {
-  Rg(rd) = Rg(rn) ^ op2;
-  if (decoded->s == 1) {
-    setCPSRL(rd);
-  }
-}
-
-void sub(uint32_t rn, uint32_t op2, uint32_t rd) {
-  uint32_t one = 1;
-  Rg(rd) = Rg(rn) + (~op2 + one);
-  if (decoded->s == 1) {
-    CPSR_ = setCPSRA();
-    if (Rg(rd) == 0) {
-      CPSR_ += (1 << 30);
-    }
-    if ((Rg(rd) & 1 << 31) == pow(2, 31)) {
-      CPSR_ += 1 << 31;
-    }
-    if (op2 > Rg(rn)) {
-      CPSR_ += 1 << 29;
-    }
-  }
-}
-
-void rsb(uint32_t rn, uint32_t op2, uint32_t rd) {
-  uint32_t one = 1;
-  Rg(rd) = op2 + (~Rg(rn) + one);
-  if (decoded-> s == 1) {
-    CPSR_ = setCPSRA();
-    if (Rg(rd) == 0) {
-      CPSR_ += (1 << 30);
-    }
-    if ((Rg(rd) & 1 << 31) == pow(2, 31)) {
-      CPSR_ += 1 << 31;
-    }
-    if (Rg(rn) > op2) {
-      CPSR_ += 1 << 29;
-    }
-  }
-}
-
-void add(uint32_t rn, uint32_t op2, uint32_t rd) {
-  Rg(rd) = Rg(rn) + op2;
-  uint64_t carryChecker = Rg(rn) + op2;
-  if (decoded->s == 1) {
-    setCPSRL(rd);
-    if (carryChecker > ( pow(2,32) - 1 )){
-        CPSR_ += 1 << 29;
-    }
-  }
 }
 
 uint32_t tst(uint32_t rn, uint32_t op2) {
-  uint32_t result = Rg(rn) & op2;
+  uint32_t result = rn & op2;
+  if (decoded->s == 1) {
+    setCPSRL(result);
+  }
   return result;
- //////////// setCPSRL(rd);
 }
 
 uint32_t teq(uint32_t rn, uint32_t op2) {
-  uint32_t result = Rg(rn) ^ op2;
+  uint32_t result = rn ^ op2;
+  if (decoded->s == 1) {
+  setCPSRL(result);
+  }
   return result;
 }
 
 uint32_t cmp(uint32_t rn, uint32_t op2) {
-  uint32_t one = 1;
-  uint32_t result = Rg(rn) + (~op2 + one);
+  uint32_t result = rn - op2;
+  if (decoded->s == 1) {
+    setCPSRL(result);
+    if (rn >= op2) {
+    CPSR_ += (1 << 29);
+    }
+  }
+  //printf("%i\n", CPSR_);
   return result;
 }
 
+void and(uint32_t rn, uint32_t op2, uint32_t rd) {
+  Rg(rd) = tst(rn, op2);
+}
+
+void eor(uint32_t rn, uint32_t op2, uint32_t rd) {
+  Rg(rd) = teq(rn, op2);
+}
+
+void sub(uint32_t rn, uint32_t op2, uint32_t rd) {
+  Rg(rd) = cmp(rn, op2);
+}
+
+void rsb(uint32_t rn, uint32_t op2, uint32_t rd) {
+  Rg(rd) = cmp(op2, rn);
+}
+
+void add(uint32_t rn, uint32_t op2, uint32_t rd) {
+  
+  uint64_t carryChecker = rn + op2;
+  Rg(rd) = rn + op2;
+  if (decoded->s == 1) {
+    setCPSRL(Rg(rd));
+    if (carryChecker > ( pow(2,32) - 1 )){
+        CPSR_ += 1 << 29;
+    }
+  }
+   
+}
+
 void orr(uint32_t rn, uint32_t op2, uint32_t rd) {
-  Rg(rd) = Rg(rn) | op2;
+  Rg(rd) = rn | op2;
+  if (decoded->s == 1) {
+    setCPSRL(Rg(rd));
+  }
 }
 
 void mov(uint32_t op2, uint32_t rd) {
   Rg(rd) = op2;
+  if (decoded->s == 1) {
+    setCPSRL(Rg(rd));
+  }
 }
 
 //Creates a mask given the first and last index.
@@ -268,22 +261,8 @@ uint32_t getVal(uint32_t inst, int left, int right) {
   return inst;
 }
 
-uint32_t rotate(uint32_t imm, uint32_t n) {
-  n *= 2;
-  while ( n > 0) {
-    uint32_t zerobit = 1 & imm;
-    zerobit <<= 31;
-    imm >>= 1;
-    imm += zerobit;
-    n --;
-  }
-  return imm;
-}
-
-
 //Opcode and operation for when operand2 is not an immediate constant.
 uint32_t lsl(uint32_t rm, uint32_t shift) {
-  //uint32_t carryOut = rm << shift - 1;
   uint32_t get = 31 - (shift - 1);
   if (decoded->s == 1)  {
     CPSR_ += ( (getVal(rm, get, get)) << (shift - 1)) >> 2;
@@ -312,11 +291,22 @@ uint32_t asr(uint32_t rmVal, uint32_t shift) {
   return rmVal;
 }
 
-uint32_t ror(uint32_t rmVal, uint32_t shift) {
+uint32_t ror(uint32_t imm, uint32_t n) {
+  while ( n > 0) {
+    uint32_t zerobit = 1 & imm;
+    zerobit <<= 31;
+    imm >>= 1;
+    imm += zerobit;
+    n --;
+  }
+  return imm;
+}
+
+uint32_t rotate(uint32_t rmVal, uint32_t shift) {
   if (decoded->s == 1) {
   CPSR_ += (getVal(rmVal, shift - 1, shift - 1)) >> (shift -1);
   }
-  return rotate(rmVal, shift);
+  return ror(rmVal, shift * 2);
 }
 
 //Branch Instructions
@@ -325,9 +315,11 @@ uint32_t ror(uint32_t rmVal, uint32_t shift) {
 void branch(uint32_t offset) {
         uint32_t sign = getVal(offset, 23, 23);
         offset <<= 2 ;
+        offset &= 0x03ffffff;
         if (sign == 1) {
           offset += 0xfc000000;
         }
+                
         PC_ += offset;
         (fetched -> pending) = F;
         (decoded -> pending) = F;
@@ -337,7 +329,10 @@ void branch(uint32_t offset) {
 
 // getOp2 uses this function if I is set
 uint32_t iIsSet(uint32_t op2) {
-  CPSR_ = setCPSRA();
+  if (decoded->s == 1) {
+    CPSR_ = setCPSRA();
+  }
+  
   //CPSR_ += (getVal(op2, 3, 3)) << 29;
   uint32_t imm = getVal(op2, 7, 0);
     uint32_t rot = getVal(op2, 11, 8);
@@ -346,8 +341,9 @@ uint32_t iIsSet(uint32_t op2) {
 
 // getOp2 uses this function if I is not set
 uint32_t iIsNotSet(uint32_t op2) {
-
-  CPSR_ = setCPSRA();
+  if (decoded->s == 1) {
+    CPSR_ = setCPSRA();
+  }
   uint32_t shift = getVal(op2, 11, 4);
   uint32_t rm = op2 & 15;
   uint32_t shiftVal = getVal(op2, 11, 7);
@@ -387,14 +383,12 @@ uint32_t getOp2(void) {
 
 void ldr(uint32_t arg) {
 
-        if (decoded ->l == 1) {
-
-        uint32_t offset = 0;
-        uint32_t result = 0;
+        uint32_t offset;
+        uint32_t result;
 
         //If I is set, arg is interpreted as a shift register, otherwise 12 bit offset
         switch (decoded -> i) {
-                case 1 : offset = iIsSet(arg);
+                case 1 : offset = iIsNotSet(arg);
                 break;
                 case 0 : offset = arg;
                 break;
@@ -411,33 +405,29 @@ void ldr(uint32_t arg) {
                         result = Rg(decoded -> rn) - offset;
                 }
                 //Data is transferred
-                Rg(decoded->rd) = fetchFromMem(result);
+                fromMemtoReg(result, decoded->rd);
 
         } else {
                 //Data is transferred
-                Rg(decoded->rd) = fetchFromMem(offset);
+                fromMemtoReg(decoded->rd, offset);
                 //If u is set, offset is added
                 if (decoded -> u == 1) {
                         Rg(decoded -> rn) += offset;
                 } else {
                         Rg(decoded -> rn) -= offset;
                 }
-        }
-
         }
         
 }
 
 void str(uint32_t arg) {
-
-        if (decoded -> l == 0) {
        
-        uint32_t offset = 0;
-        uint32_t result = 0;
-
+        uint32_t offset;
+        uint32_t result;
         //If I is set, arg is interpreted as a shift register, otherwise 12 bit offset
         switch (decoded -> i) {
-                case 1 : offset = iIsSet(arg);
+          
+                case 1 : offset = iIsNotSet(arg);
                 break;
                 case 0 : offset = arg;
                 break;
@@ -454,11 +444,11 @@ void str(uint32_t arg) {
                         result = Rg(decoded -> rn) - offset;
                 }
                 //Data is transferred
-                putInMem((result) , Rg(decoded -> rd));
-
+               
+                putInMem(result, Rg(decoded -> rd));
         } else {
                 //Data is transferred
-                putInMem((offset) , Rg(decoded->rd));
+                putInMem(offset , Rg(decoded->rd));
                 //If u is set, offset is added
                 if (decoded -> u == 1) {
                         Rg(decoded -> rn) += offset;
@@ -466,13 +456,8 @@ void str(uint32_t arg) {
                         Rg(decoded -> rn) -= offset;
                 }
         }
-
-        }
-        
 }
 
-       
- 
 
 void multiply(void) {
   uint32_t result = Rg(decoded->rm) * Rg(decoded->rs);
@@ -549,23 +534,23 @@ void executeDecodedInstruction(void){
    
     switch (op){
    
-        case AND : and(decoded->rn, getOp2(), decoded->rd);
+        case AND : and(Rg(decoded->rn), getOp2(), decoded->rd);
                    break;
-        case EOR : eor(decoded->rn, getOp2(), decoded->rd);
+        case EOR : eor(Rg(decoded->rn), getOp2(), decoded->rd);
                    break;
-        case SUB : sub(decoded->rn, getOp2(), decoded->rd);
+        case SUB : sub(Rg(decoded->rn), getOp2(), decoded->rd);
                    break;
-        case RSB : rsb(decoded->rn, getOp2(), decoded->rd);
+        case RSB : rsb(Rg(decoded->rn), getOp2(), decoded->rd);
                    break;
-        case ADD : add(decoded->rn, getOp2(), decoded->rd);
+        case ADD : add(Rg(decoded->rn), getOp2(), decoded->rd);
                    break;
-        case TST : tst(decoded->rn, getOp2());
+        case TST : tst(Rg(decoded->rn), getOp2());
                    break;
-        case TEQ : teq(decoded->rn, getOp2());
+        case TEQ : teq(Rg(decoded->rn), getOp2());
                    break;
-        case CMP : cmp(decoded->rn, getOp2());
+        case CMP : cmp(Rg(decoded->rn), getOp2());
                    break;
-        case ORR : orr(decoded->rn, getOp2(), decoded->rd);
+        case ORR : orr(Rg(decoded->rn), getOp2(), decoded->rd);
                    break;
         case MOV : mov(getOp2(), decoded->rd);
                    break;
@@ -720,6 +705,7 @@ void decodeFetchedInstruction(void){
                                     break;
         case SINGLE_DATA_TRANSFER : decoded->cond     = getVal(fetched->binaryInstruction, 31, 28) ;
                                     decoded->i        = getVal(fetched->binaryInstruction, 25, 25) ;
+                                    decoded->s        = 0;
                                     decoded->p        = getVal(fetched->binaryInstruction, 24, 24) ;
                                     decoded->rn       = getVal(fetched->binaryInstruction, 19, 16) ;
                                     decoded->rd       = getVal(fetched->binaryInstruction, 15, 12) ;
@@ -729,6 +715,7 @@ void decodeFetchedInstruction(void){
                                     break;
         case BRANCH               : decoded->l        = getVal(fetched->binaryInstruction, 31, 28) ;
                                     decoded->offset   = getVal(fetched->binaryInstruction, 23,  0) ;
+                                    decoded->s        = 0;
                                     break;
         case SPECIAL              : break;
 
@@ -800,7 +787,7 @@ void printFinalState(void){
                 break;
             }
 
-            if ( checkCond() | (decoded->operation == B )) { //check if conditions match CPSR
+            if ( checkCond() | (decoded->operation == B)) { //check if conditions match CPSR
 
                 executeDecodedInstruction();
             }
@@ -838,3 +825,4 @@ void printFinalState(void){
         return EXIT_SUCCESS;
 
  }
+
