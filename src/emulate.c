@@ -324,7 +324,6 @@ uint32_t lsl(uint32_t rmVal, uint32_t shift) {  //  Logical shift left
 
 
 //Opcode and operation for when operand2 is not an immediate constant.
-uint32_t lsl(uint32_t rm, uint32_t shift) {
   //uint32_t carryOut = rm << shift - 1;
   uint32_t get = 31 - (shift - 1);
   
@@ -595,7 +594,6 @@ void mov(uint32_t op2, uint32_t rd) {  //  Rd := Op2
  *  so only one function is required for both multiply operations.
  */
  
-void multiply(void) {
 
 void multiply(void) {
   uint32_t result = Rg(decoded->rm) * Rg(decoded->rs);
@@ -1064,7 +1062,7 @@ void executeDecodedInstruction(void){
         case MOV :  mov(getOp2(), decoded->rd);
                     break;
                     
-        case MLA :  ;            
+        case MLA :  break;
         case MUL :  multiply();
                     break;     
                       
@@ -1074,12 +1072,12 @@ void executeDecodedInstruction(void){
         case STR :  str(decoded->offset);
                     break;
                     
-        case BEQ :  ;
-        case BNE :  ;
-        case BGE :  ;
-        case BLT :  ;
-        case BGT :  ;
-        case BLE :  ;
+        case BEQ :  break;
+        case BNE :  break;
+        case BGE :  break;
+        case BLT :  break;
+        case BGT :  break;
+        case BLE :  break;
         case B   :  branch(decoded->offset);
                     break;   
                          

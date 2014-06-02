@@ -57,17 +57,11 @@ int and(int rn, int op2) {
 
 
 
-//int main(int argc, char **argv) {
-//  return EXIT_SUCCESS;
-//}
+ int main(int argc, char **argv) {
 
- int main(void) {
-	 const char (*fname)[];
-	 if (fname[sizeof(fname)-2] == "." && fname[sizeof(fname)-1] == "s") {
-		 FILE *stream = fopen(fname, "r");
+		 FILE *file = fopen(argv[1], "r");
 		 printf("works\n");
-	 } else {
-		 fprintf(stderr, "Must be a source file in assembly language!");
-		 exit(EXIT_FAILURE);
-	 }
+
+		 return EXIT_SUCCESS;
+
  }
