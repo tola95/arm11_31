@@ -112,6 +112,27 @@ uint32_t casePreIndexedAdSpec( uint32_t rd, uint32_t address , uint32_t expressi
   return result;
 }
 
+uint32_t casePostIndexedAdSpec( uint32_t rd, uint32_t address , uint32_t expression) {
+  
+  uint32_t result = 0x0;
+ 
+  if ( strcmp( inst, "ldr") == 0 ) {
+    result |= (1 << 20) ;    //set L bit
+  } else {
+    result |= (0 << 20) ;    // don't set L bit
+  }
+  
+  result |= (0x01 << 26) ; //bits 27 and 26 are 0 and 1 respectively
+  result |= (0x00 << 21) ; //bits 22 and 21 are 0 and 0 respectively
+  result |= (rd << 12);    //bits 15 t0 12 represent the rd
+  result |= (address << 16);    //with PC as base reg (rn)
+  result |= (0 << 24); //pre index
+  result |= (0 << 25); //i is set since address is register
+
+     result |= expression;
+  return result;
+}
+
 
 uint32_t ldr(char* rd,  char* address) {
   char *ptr = &rd[1];
@@ -122,12 +143,21 @@ uint32_t ldr(char* rd,  char* address) {
     
     case '['  :  
 
-      if (noOfArgs(address) == 1) {
-        return casePreIndexedAdSpec(atoi(ptr), getRm1(address), 0);
-      } else if (noOfArgs(address) == 2) {
-        return casePreIndexedAdSpec(atoi(ptr), getRm(address), getExpr(address));
+      if (strstr(address, "],")==NULL) {
+
+        if (noOfArgs(address) == 1) {
+          return casePreIndexedAdSpec(atoi(ptr), getRm1(address), 0);
+        } else if (noOfArgs(address) == 2) {
+          return casePreIndexedAdSpec(atoi(ptr), getRm(address), getExpr(address));
+        } else {
+          return 0; //Optional. Do later
+        }
+
       } else {
-        return 0; //Optional. Do later
+        
+        if (noOfArgs(address)== 2)  {
+          return casePostIndexedAdSpec(atoi(ptr), getRm1(address), getExpr(address));
+        }
       }
       
     
@@ -142,13 +172,22 @@ uint32_t str(char* rd,  char* address) {
 
     case '[' : 
 
-       if (noOfArgs(address) == 1) {
-        return casePreIndexedAdSpec(atoi(ptr), getRm1(address), 0);
-      } else if (noOfArgs(address) == 2) {
+       if (strstr(address, "],")==NULL) {
+
+         if (noOfArgs(address) == 1) {
+           return casePreIndexedAdSpec(atoi(ptr), getRm1(address), 0);
+         } else if (noOfArgs(address) == 2) {
        
-        return casePreIndexedAdSpec(atoi(ptr), getRm(address), getExpr(address));
+           return casePreIndexedAdSpec(atoi(ptr), getRm(address), getExpr(address));
+         } else {
+           return 0; //Optional. Do later 
+         }
+
       } else {
-        return 0; //Optional. Do later 
+        
+        if (noOfArgs(address) == 2) {
+          return casePostIndexedAdSpec(atoi(ptr), getRm1(address), getExpr(address));
+        }
       }
 
     default : return 0;
