@@ -57,10 +57,11 @@ int and(int rn, int op2) {
 
 
 
-//int main(int argc, char **argv) {
-//  return EXIT_SUCCESS;
-//}
+ int main(int argc, char **argv) {
 
- int main(void) {
-	 printf("works\n");
+		 FILE *file = fopen(argv[1], "r");
+		 printf("works\n");
+
+		 return EXIT_SUCCESS;
+
  }

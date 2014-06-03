@@ -34,8 +34,21 @@ enum {REG = 17, MEM = 65536};
 //  Boolean type enumeration.
 enum bool {F, T};
 
+<<<<<<< HEAD
+/*typedef only gives name to the struct ARM_STATE so that 
+you don't have to write struct ARM_STATE when you initialise
+the struct. This leads you to only have to write State when 
+initialising*/
+
+//creating struct for each register.
+typedef struct ARM_REGISTER {
+  char ident[4];
+  uint32_t reg;
+} Register;
+=======
 //  Enumeration of instruction types. Useful when decoding instructions.
 enum instructionType {
+>>>>>>> origin/master
 
     DATA_PROCESSING, MULTIPLY, SINGLE_DATA_TRANSFER, BRANCH, SPECIAL   
 } ;
@@ -147,9 +160,40 @@ void initMem() {
  */
 void initdf(void) {
 
+<<<<<<< HEAD
+//Struct representing decoded instruction.
+struct decodedInstruction {
+        enum mnemonic operation;
+        enum bool pending;       
+        uint32_t offset;
+        uint32_t cond;
+        uint32_t op2;
+        uint32_t rd;
+        uint32_t rn;
+        uint32_t rs;
+        uint32_t rm;
+        uint32_t op2;
+        uint32_t i;
+        uint32_t a;
+        uint32_t s;
+        uint32_t u;
+        uint32_t p;
+        uint32_t l;
+} ;
+   
+//Struct representing fetched instruction.
+struct fetchedInstruction {
+        uint32_t binaryInstruction;
+        enum bool pending;
+} ;
+   
+struct decodedInstruction *decoded;
+struct fetchedInstruction *fetched;
+=======
       decoded = malloc(sizeof(struct decodedInstruction));
       fetched = malloc(sizeof(struct fetchedInstruction));       
 }
+>>>>>>> origin/master
 
 /*  ---------------------------------------------------------------------
  *                        LOADING/STORING DATA
@@ -166,7 +210,6 @@ uint32_t fetchFromMem(uint32_t start) {
   
     uint32_t val  = memPtr[start + i] << (i * 8);
     reversedInst |= val;
-
   }
 
   return reversedInst;
@@ -300,7 +343,12 @@ void printBits1(uint32_t x) {
  */
 
 
+<<<<<<< HEAD
+
+//Creates a mask given the first and last index.
+=======
 //  Creates a mask given the first and last index to mask from.
+>>>>>>> origin/master
 uint32_t getVal(uint32_t inst, int left, int right) {
 
   int m = ((left - right) + 1);
@@ -312,6 +360,45 @@ uint32_t getVal(uint32_t inst, int left, int right) {
   
 }
 
+<<<<<<< HEAD
+uint32_t rotate(uint32_t imm, uint32_t n) {
+  n *= 2;
+  while ( n > 0) {
+    uint32_t zerobit = 1 & imm;
+    zerobit <<= 31;
+    imm >>= 1;
+    imm += zerobit;
+    n --;
+  }
+  return imm;
+}
+
+//Function to check conditions
+enum bool checkCond(uint32_t instruction) {
+	uint32_t cond = masking(instruction, 31, 28 );
+	uint32_t cpsrCond = masking(ARMReg[16].reg, 31, 28);
+	 if ((cond == cpsrCond) || cond == 14) {return T;} //Code = 1110 or matches CPSR
+	else {return F;}
+}
+
+
+//Helper method to change a specific bit
+ uint32_t changebit(uint32_t i, int bit, int change) {
+
+	assert(change == 0 || change == 1);
+
+	uint32_t mask = 1 * pow(2, bit);
+
+	if (change == 1) {
+		i |= mask; 
+	} else if (change == 0) {
+		i &= ~mask;
+	} 
+
+	return i;
+}
+
+=======
 /*  ---------------------------------------------------------------------
  *                         SHIFT OPERATIONS
  *  ---------------------------------------------------------------------
@@ -321,10 +408,8 @@ uint32_t getVal(uint32_t inst, int left, int right) {
  */
  
 uint32_t lsl(uint32_t rmVal, uint32_t shift) {  //  Logical shift left
+>>>>>>> origin/master
 
-
-//Opcode and operation for when operand2 is not an immediate constant.
-  //uint32_t carryOut = rm << shift - 1;
   uint32_t get = 31 - (shift - 1);
   
   if (decoded->s == 1)  {
@@ -594,8 +679,8 @@ void mov(uint32_t op2, uint32_t rd) {  //  Rd := Op2
  *  so only one function is required for both multiply operations.
  */
  
-
 void multiply(void) {
+
   uint32_t result = Rg(decoded->rm) * Rg(decoded->rs);
   
   if (decoded->a == 1) {   //  executed if MLA operation.
@@ -623,7 +708,6 @@ void multiply(void) {
 
  
 
-    PC_ += 4;//PC_ is a macro defined earlier
 
 /*  ---------------------------------------------------------------------
  *                        SINGLE DATA OPERATIONS
@@ -822,17 +906,64 @@ void fetchNextInstruction(void){
     fetched->binaryInstruction = fetchFromMem(PC_); //PC_ is a macro defined earlier.
     fetched->pending = T; 
 }
- 
-//function to execute decoded instructions and clear decoded instructions pending flag.
-void executeDecodedInstruction(void){
 
 
+<<<<<<< HEAD
+    decoded->pending = F;
+    
+    enum mnemonic op = decoded->operation;
+   
+    switch (op){
+   
+        case AND : and(decoded->rn, getOp2(), decoded->rd);
+                   break;
+        case EOR : eor(decoded->rn, getOp2(), decoded->rd);
+                   break;
+        case SUB : sub(decoded->rn, getOp2(), decoded->rd);
+                   break;
+        case RSB : rsb(decoded->rn, getOp2(), decoded->rd);
+                   break;
+        case ADD : add(decoded->rn, getOp2(), decoded->rd);
+                   break;
+        case TST : tst(decoded->rn, getOp2());
+                   break;
+        case TEQ : teq(decoded->rn, getOp2());
+                   break;
+        case CMP : cmp(decoded->rn, getOp2());
+                   break;
+        case ORR : orr(decoded->rn, getOp2(), decoded->rd);
+                   break;
+        case MOV : mov(getOp2(), decoded->rd);
+                   break;
+        case MLA : ;                
+        case MUL : multiply();
+                   break;       
+        case LDR : ldr(decoded->offset);
+                   break;        
+        case STR : str(decoded->offset);
+                   break;
+        case BEQ : ;
+        case BNE : ;
+        case BGE : ;
+        case BLT : ;
+        case BGT : ;
+        case BLE : ;
+        case B   : branch(decoded->offset);
+                   break;        
+        default:   break;
+  }
+    
+}
+
+//Helper function to figure out the operation mnemonic from the 32-bit instruction.
+=======
 /*  ---------------------------------------------------------------------
  *                            DECODE
  *  ---------------------------------------------------------------------
  */
  
 //  Helper function to figure out the operation mnemonic from the 32-bit instruction.
+>>>>>>> origin/master
 enum instructionType mnemonicDecoder(void){
 
     /*  Use the bits which are specific to different instruction types to determine
@@ -1062,7 +1193,7 @@ void executeDecodedInstruction(void){
         case MOV :  mov(getOp2(), decoded->rd);
                     break;
                     
-        case MLA :  break;
+        case MLA :  ;            
         case MUL :  multiply();
                     break;     
                       
@@ -1072,18 +1203,17 @@ void executeDecodedInstruction(void){
         case STR :  str(decoded->offset);
                     break;
                     
-        case BEQ :  break;
-        case BNE :  break;
-        case BGE :  break;
-        case BLT :  break;
-        case BGT :  break;
-        case BLE :  break;
+        case BEQ :  ;
+        case BNE :  ;
+        case BGE :  ;
+        case BLT :  ;
+        case BGT :  ;
+        case BLE :  ;
         case B   :  branch(decoded->offset);
                     break;   
                          
         default  :  break;
   }
-}
 }
 
 
@@ -1116,7 +1246,12 @@ void executeDecodedInstruction(void){
      }
     
     
+<<<<<<< HEAD
+     /* Calculate file size and then from the size, the number of 32-bit instructions in the file */
+     const int bytesPerInstruction = 4;
+=======
      //  Calculate file size and then from the size, the number of 32-bit instructions in the file
+>>>>>>> origin/master
      fseek( file, 0, SEEK_END );
      int instructionsSize = ftell(file);
      fseek( file, 0, SEEK_SET );
@@ -1138,7 +1273,6 @@ void executeDecodedInstruction(void){
  *  instructions pending.
  */
    
-     //main pipeline loop.
      while ( T ) { //Loops infinitely until halt instruction is called
 
 
@@ -1158,10 +1292,13 @@ void executeDecodedInstruction(void){
         }
 
         if ( fetched->pending == T ) {
+<<<<<<< HEAD
+
+=======
         
+>>>>>>> origin/master
             decodeFetchedInstruction();
             fetched->pending = F;
-           
         }
 
         if (PC_ <  MEM) { // PC_ is a macro defined earlier.
