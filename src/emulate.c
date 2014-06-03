@@ -623,8 +623,6 @@ void multiply(void) {
 
  
 
-    PC_ += 4;//PC_ is a macro defined earlier
-
 /*  ---------------------------------------------------------------------
  *                        SINGLE DATA OPERATIONS
  *  ---------------------------------------------------------------------
@@ -823,9 +821,6 @@ void fetchNextInstruction(void){
     fetched->pending = T; 
 }
  
-//function to execute decoded instructions and clear decoded instructions pending flag.
-void executeDecodedInstruction(void){
-
 
 /*  ---------------------------------------------------------------------
  *                            DECODE
@@ -1084,7 +1079,7 @@ void executeDecodedInstruction(void){
         default  :  break;
   }
 }
-}
+
 
 
 
