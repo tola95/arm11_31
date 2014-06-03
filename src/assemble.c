@@ -37,11 +37,11 @@ enum mnemonic lookUp(char *string) {
                         return mnemonicTable[i]->opcode;
                 }
         }
-        return 0;
+        return 0; //Never reaches here
 }
 
 typedef struct deconstruct {
-    enum mnemonic opcode;
+     
     char *rn;
     char *rd;
     char *operand2;
@@ -56,7 +56,7 @@ const char limits[3] = ", ";
 void setMnemonic(char *instruction) {
 
   enum mnemonic opcode = lookUp(instruction);
-  
+ 
   switch(opcode) {
   case AND :
     printf("YAY");
