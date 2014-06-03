@@ -94,7 +94,7 @@ struct decodedInstruction {
                                  */ 
 } ;
 //  A pointer to an instance of the decodedInstruction struct is declared.
-//  It is declared outside of main because it needs to be a global variable.
+//  It is declared outsideof main because it needs to be a global variable.
 struct decodedInstruction *decoded;
  
 
