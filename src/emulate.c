@@ -166,7 +166,6 @@ uint32_t fetchFromMem(uint32_t start) {
   
     uint32_t val  = memPtr[start + i] << (i * 8);
     reversedInst |= val;
-
   }
 
   return reversedInst;
@@ -270,26 +269,6 @@ void putInMem(uint32_t memAddr, uint32_t value) {
     
 }
 
-/*  
-    ============================================================================
-
-This function is never called in the program !! This should be removed right ?
-
-void printBits1(uint32_t x) {
-  int i;
-  uint32_t mask = 1 << 31;
-  for(i=0; i<32; ++i) {
-    if((x & mask) == 0)
-      printf("0");
-    else
-      printf("1"); x = x << 1;
-  }
-  printf("\n "); }
-
-    ===========================================================================
-  
- */
-
 /*  NOTE:
  *  The following functions use macros defined earlier to make code easier to read.
  *  '' Rg(x) '' is replaced with '' ARMReg[(x)].reg '' at compile time.
@@ -322,15 +301,11 @@ uint32_t getVal(uint32_t inst, int left, int right) {
  
 uint32_t lsl(uint32_t rmVal, uint32_t shift) {  //  Logical shift left
 
-
-//Opcode and operation for when operand2 is not an immediate constant.
-  //uint32_t carryOut = rm << shift - 1;
   uint32_t get = 31 - (shift - 1);
   
   if (decoded->s == 1)  {
   
     CPSR_ += ( (getVal(rmVal, get, get)) << (shift - 1)) >> 2;
-   // CPSR_ += (getVal(rmVal, 31, 31)) << 29;     THIS SHOULD BE DELETED RIGHT ?
   }
   
   return rmVal << shift;
@@ -433,7 +408,6 @@ uint32_t iIsSet(uint32_t op2) {
     CPSR_ = setCPSRA();
   }
   
-  //CPSR_ += (getVal(op2, 3, 3)) << 29;  THIS SHOULD BE DELETED RIGHT ?
   uint32_t imm = getVal(op2, 7, 0);
   uint32_t rot = getVal(op2, 11, 8);
   
@@ -594,8 +568,8 @@ void mov(uint32_t op2, uint32_t rd) {  //  Rd := Op2
  *  so only one function is required for both multiply operations.
  */
  
-
 void multiply(void) {
+
   uint32_t result = Rg(decoded->rm) * Rg(decoded->rs);
   
   if (decoded->a == 1) {   //  executed if MLA operation.
@@ -604,7 +578,6 @@ void multiply(void) {
   }
   
   Rg(decoded->rd) = result;
-  setCPSRL(result);        //  THIS IS REDUNDANT AND SHOULD BE DELETED RIGHT ?
   
   if (decoded->s == 1) {
     setCPSRA();            //  Clear CPSR (Except V bit)
@@ -661,7 +634,7 @@ void ldr(uint32_t arg) {
     } else {
     
         //  Data is transferred beforehand 
-        fromMemtoReg(offset, decoded->rd);
+        fromMemtoReg(Rg(decoded->rn), decoded->rd);
 
         if (decoded -> u == 1) {
         
@@ -711,7 +684,7 @@ void str(uint32_t arg) {
     } else {
     
         //  Data is transferred beforehand
-        putInMem(offset , Rg(decoded->rd));
+        putInMem(Rg(decoded->rn) , Rg(decoded->rd));
 
         if (decoded -> u == 1) {
         
@@ -820,7 +793,6 @@ void fetchNextInstruction(void){
     fetched->binaryInstruction = fetchFromMem(PC_); //PC_ is a macro defined earlier.
     fetched->pending = T; 
 }
- 
 
 /*  ---------------------------------------------------------------------
  *                            DECODE
@@ -1057,7 +1029,7 @@ void executeDecodedInstruction(void){
         case MOV :  mov(getOp2(), decoded->rd);
                     break;
                     
-        case MLA :  break;
+        case MLA :  ;            
         case MUL :  multiply();
                     break;     
                       
@@ -1067,19 +1039,18 @@ void executeDecodedInstruction(void){
         case STR :  str(decoded->offset);
                     break;
                     
-        case BEQ :  break;
-        case BNE :  break;
-        case BGE :  break;
-        case BLT :  break;
-        case BGT :  break;
-        case BLE :  break;
+        case BEQ :  ;
+        case BNE :  ;
+        case BGE :  ;
+        case BLT :  ;
+        case BGT :  ;
+        case BLE :  ;
         case B   :  branch(decoded->offset);
                     break;   
                          
         default  :  break;
   }
 }
-
 
 
 
@@ -1133,7 +1104,6 @@ void executeDecodedInstruction(void){
  *  instructions pending.
  */
    
-     //main pipeline loop.
      while ( T ) { //Loops infinitely until halt instruction is called
 
 
@@ -1156,7 +1126,6 @@ void executeDecodedInstruction(void){
         
             decodeFetchedInstruction();
             fetched->pending = F;
-           
         }
 
         if (PC_ <  MEM) { // PC_ is a macro defined earlier.
