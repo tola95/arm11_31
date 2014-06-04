@@ -10,7 +10,7 @@
 #include <math.h>
 #include <stdint.h>
 #include <assert.h>
-#include <SymbolTable.h>
+#include "SymbolTable.h"
 
 
 
