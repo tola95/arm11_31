@@ -14,7 +14,9 @@
 //  Adds a string to a symbolTable with its appropriate memoryAddress.
 void addToSymbolTable(char *label, int lineNumber, int labelCount){
 
+    //  Calculates memory address from line number and number of previous labels.
     uint32_t memAddress = (lineNumber - labelCount) * 4;
+    symbolTableInsert(&labels, label, memAddress);
 }
 
 //  Checks if a string is a label (I.E. contains a ':').
@@ -68,9 +70,7 @@ int main(int argc, char **argv) {
      
     int   lineNumber =  0;  //  Must keep track of line number to calculate memory addresses.
     int   labelCount =  0;  //  Must keep track of number of labels to calculate memory addresses.
-    char  line[100];        /*  This variable stores the previously read line from the file.
-                             *  Assumes a line is never longer than 100 characters in length.
-                             */
+    char  *line;            //  This variable stores the previously read line from the file.
 
     
     /*  fgets returns NULL pointer when it reaches the end of the file.
@@ -81,12 +81,12 @@ int main(int argc, char **argv) {
 
     while( fgets(line, 100, file ) != NULL){  //  Loops until the end of the file.
 
-        lineNumber++;          //  Increase line number with each iteration.
+        lineNumber++;              //  Increase line number with each iteration.
         
         if ( lineIsLabel(line) ){  //  Add the line to the symbol table if it is a label.
 
             addToSymbolTable(line, lineNumber, labelCount);
-            labelCount++;      //  Indicates how many labels have been found so far.
+            labelCount++;          //  Indicates how many labels have been found so far.
             
         }
         
