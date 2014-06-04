@@ -65,7 +65,7 @@ void initdf(void) {
 
 
 /*  ---------------------------------------------------------------------
- *                   DATA STRUCTURES USED IN EMULATOR
+ *                DATA STRUCTURES USED IN ASSEMBLER
  *  ---------------------------------------------------------------------
  *
  *  Includes the implementation of the symbol table which will be used to
@@ -80,7 +80,7 @@ struct symbolTableElem {
     struct symbolTableElem *next;
     struct symbolTableElem *prev;
     int    value;
-    char  *string;  //  Flexible array member.
+    char  *string;
 };
 
 struct symbolTable {
@@ -90,7 +90,7 @@ struct symbolTable {
 };
 
 //  Allocates memory for an individual symbolTableElem.
-struct symbolTableElem *symbolTableElem_alloc(void){
+struct symbolTableElem *symbolTableElem_alloc(void) {
 
     //  Arbitrarily assume a label is never longer than 100 characters.
     size_t maxStringSize = sizeof(char)*100; 
@@ -106,7 +106,7 @@ struct symbolTableElem *symbolTableElem_alloc(void){
 }
 
 //  Initialises a symbolTable.
-void symbolTable_init(struct symbolTable *st){
+void symbolTable_init(struct symbolTable *st) {
 
     st->header = symbolTableElem_alloc();
     st->footer = symbolTableElem_alloc();
@@ -121,17 +121,24 @@ void symbolTable_init(struct symbolTable *st){
 typedef struct symbolTableElem* symbolTableIterator; 
 
 //  Gets first element of a symbol table.
-symbolTableIterator table_start(struct symbolTable *st){
+symbolTableIterator table_start(struct symbolTable *st) {
     return st->header->next;
 }
 
 //  Gets last element of a symbol table.
-symbolTableIterator table_end(struct symbolTable *st){
+symbolTableIterator table_end(struct symbolTable *st) {
     return st->footer;
 }
 
+
+/*  ---------------------------------------------------------------------
+ *                        SYMBOL TABLE METHODS
+ *  ---------------------------------------------------------------------
+ *
+ */
+ 
 //  Inserts an element to the end of the symbol table list.
-void symbolTableInsert(struct symbolTable *st, char *string, int value){
+void symbolTableInsert(struct symbolTable *st, char *string, int value) {
 
     //  Creates the new element to be inserted.
     struct symbolTableElem *newElem = symbolTableElem_alloc();
@@ -147,6 +154,23 @@ void symbolTableInsert(struct symbolTable *st, char *string, int value){
     iter->prev       = newElem;
 }
 
+//  This function should only be called when the string is a known member of the symbolTable.
+int lookup(struct symbolTable *st, char *string){
+
+    struct symbolTableElem *elem = table_start(st);
+
+    while (elem != NULL) {
+
+        if ( !strcmp(elem->string, string) ) {
+
+            return elem->value;
+        }
+        
+        elem = elem->next;
+    }
+    
+    return 0;
+}
 
 //  Global declarations so they can be referenced anywhere in the program.
 struct symbolTable opCodes;
@@ -160,6 +184,23 @@ void initST(void){
 
     symbolTable_init(&opCodes);
     symbolTable_init(&labels);
+
+    //  An array containing all the mnemonics supported.
+    char *mnemonicStrings[] = {
+    
+        "and", "eor", "sub", "rsb", "add", "tst", "mov", "mul", "mla",
+        "ldr", "str", "beq", "bne", "bge", "blt", "bgt", "ble", "b",
+        "lsl", "andeq"
+    };
+
+    /*  Makes a symbol table containing all the mnemonics. Look up a string
+     *  to do a switch statement on it.
+     */
+
+    for (int i = 0; i < MNEMONICS; i++) {
+
+        symbolTableInsert(&opCodes, mnemonicStrings[i], i);
+    }
 
 }
 
