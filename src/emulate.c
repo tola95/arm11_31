@@ -8,6 +8,7 @@
 #include <math.h>
 #include <stdint.h>
 #include <assert.h>
+#include "dataStructures.h"
 
 /*  ---------------------------------------------------------------------
  *                            MACROPROCESSOR
@@ -23,133 +24,7 @@
 #define CPSR_  ARMReg[16].reg
 
 
-/*  ---------------------------------------------------------------------
- *                              ENUMERATIONS
- *  ---------------------------------------------------------------------
- */
- 
-//  Constants for the number of registers and the number of byte addresses.
-enum {REG = 17, MEM = 65536};
 
-//  Boolean type enumeration.
-enum bool {F, T};
-
-//  Enumeration of instruction types. Useful when decoding instructions.
-enum instructionType {
-
-    DATA_PROCESSING, MULTIPLY, SINGLE_DATA_TRANSFER, BRANCH, SPECIAL   
-} ;
-
-//  Enumeration of all operation mnemonics for help with decoding and execution.
-enum mnemonic {  
-
-    AND, EOR, SUB,
-    RSB, ADD, TST,
-    TEQ, CMP, ORR,
-    MOV, MUL, MLA,
-    LDR, STR, BEQ,
-    BNE, BGE, BLT,
-    BGT, BLE, B,
-    LSL, ANDEQ
-    
-};
-
-
-/*  ---------------------------------------------------------------------
- *                            DATA STRUCTURES
- *  ---------------------------------------------------------------------
- */
- 
-//  Struct representing fetched instruction.
-struct fetchedInstruction {
-
-        uint32_t binaryInstruction; //  32-bit string representing the whole instruction.
-        enum bool pending;          /*  Set to indicate that the currently fetched instruction should be
-                                     *  decoded in the next cycle of the 'pipeline' in main.
-                                     */ 
-} ;
-//  A pointer to an instance of the fetchedInstruction struct is declared.
-//  It is declared outside of main because it needs to be a global variable.
-struct fetchedInstruction *fetched;
-
-//  Struct representing the data from decoded instructions.
-struct decodedInstruction {
-
-    enum mnemonic operation;  //  The opcode of the instruction to execute.  
-    uint32_t offset;          //  These are all the potential flags and
-    uint32_t cond;            //  values which may be required by an
-    uint32_t op2;             //  instruction.
-    uint32_t rd;              //
-    uint32_t rn;              //  When an instruction is decoded,
-    uint32_t rs;              //  the relevant fields are updated
-    uint32_t rm;               
-    uint32_t i;
-    uint32_t a;
-    uint32_t s;
-    uint32_t u;
-    uint32_t p;
-    uint32_t l;
-    enum bool pending;          /*  Set to indicate that the currently decoded instruction should be
-                                 *  executed in the next cycle of the 'pipeline' in main.
-                                 */ 
-} ;
-//  A pointer to an instance of the decodedInstruction struct is declared.
-//  It is declared outside of main because it needs to be a global variable.
-struct decodedInstruction *decoded;
- 
-
-//  A struct for storing an individual register.
-typedef struct ARM_REGISTER {
-
-  char ident[4];
-  uint32_t reg;
-} Register;
-
-/*  Creates an array of registers
- *  Each register is assigned a string naming the register
- *  and its value is initialised to 0.
- */
-Register ARMReg[REG] = {
-  {"$0",   0},
-  {"$1",   0},
-  {"$2",   0},
-  {"$3",   0},
-  {"$4",   0},
-  {"$5",   0},
-  {"$6",   0},
-  {"$7",   0},
-  {"$8",   0},
-  {"$9",   0},
-  {"$10",  0},
-  {"$11",  0},
-  {"$12",  0},
-  {"SP",   0},
-  {"LR",   0},
-  {"PC",   0},
-  {"CPSR", 0}
-};
-
-
-/*  ---------------------------------------------------------------------
- *                           INITIALISATION
- *  ---------------------------------------------------------------------
- */
-//  Creating a pointer to the ARM Machine main memory with global scope.
-uint8_t *memPtr;
-
-//  This function is called by main to initialise the emulator's memory when the emulator starts running.
-void initMem() {
-  memPtr = (uint8_t *) calloc(MEM, sizeof(uint8_t));
-}
-
-/*  Called by main to initialise the structs for the
- *  fetched instructions and the decoded instructions.
- */
-void initdf(void) {
-
-      decoded = malloc(sizeof(struct decodedInstruction));
-      fetched = malloc(sizeof(struct fetchedInstruction));       
-}
 
 /*  ---------------------------------------------------------------------
  *                        LOADING/STORING DATA
@@ -1108,13 +983,13 @@ void executeDecodedInstruction(void){
 
 
 
-        if ( decoded->pending == T ) {
+        if ( decoded->pending ) {
 
             if (decoded->operation == ANDEQ) { //check for special halt instruction
                 break;
             }
 
-            if ( checkCond()) { //check if conditions match CPSR
+            if ( checkCond() ) { //check if conditions match CPSR
 
                 executeDecodedInstruction();
             }
@@ -1122,7 +997,7 @@ void executeDecodedInstruction(void){
             decoded->pending = F;
         }
 
-        if ( fetched->pending == T ) {
+        if ( fetched->pending ) {
         
             decodeFetchedInstruction();
             fetched->pending = F;
@@ -1133,7 +1008,7 @@ void executeDecodedInstruction(void){
             fetchNextInstruction();
             fetched->pending = T;
            
-        } else if (decoded->pending == F) {
+        } else if (!decoded->pending) {
        
             break;  //  Stop execution by breaking while loop.
         }
