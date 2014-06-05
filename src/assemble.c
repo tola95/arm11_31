@@ -66,14 +66,12 @@ int main(int argc, char **argv) {
     initST();
 
     //  Open the file containing the assembly code.
-    FILE *file = fopen(argv[1], "r");
-    if (file == NULL){
+    FILE *inputFile = fopen(argv[1], "r");
+    if (inputFile == NULL){
              perror( " Error: Could not open file. \n" );
              exit(EXIT_FAILURE);
     }
 
-    //  The name to be given to the binary output file.
-    char *outputFileName = argv[2];
 
 /*  ---------------------------------------------------------------------
  *                               FIRST PASS
@@ -94,7 +92,7 @@ int main(int argc, char **argv) {
      *  fgets stores the next line in the 'line' variable.
      */
 
-    while( fgets(line, 100, file ) != NULL){  //  Loops until the end of the file.
+    while( fgets(line, 100, inputFile ) != NULL){  //  Loops until the end of the file.
 
         lineNumber++;              //  Increase line number with each iteration.
         
@@ -108,7 +106,7 @@ int main(int argc, char **argv) {
     }
 
     //  Return to the start of the file in preparation for the second pass.
-    fseek( file, 0, SEEK_SET );
+    fseek( inputFile, 0, SEEK_SET );
     lineNumber = 0;
 
 /*  ---------------------------------------------------------------------
@@ -120,7 +118,7 @@ int main(int argc, char **argv) {
  *  then stored in a memory array.
  */
 
-    while( fgets(line, 100, file ) != NULL){  //  Loops until the end of the file.
+    while( fgets(line, 100, inputFile ) != NULL){  //  Loops until the end of the file.
 
         if (lineIsLabel(line)) continue;      //  Skips label lines.
 
@@ -177,6 +175,21 @@ int main(int argc, char **argv) {
         putInMem((lineNumber*4), machineCode);
     
     }
+
+    //  Close the file once all instructions have been read.
+    fclose(inputFile);
+
+    //  Create the output file. "ab" creates the file and opens for writing in binary mode.
+    FILE *outputFile = fopen(argv[2], "ab");
+
+    //  Writes as many lines as were decoded to prevent thousands of 0s being written.
+    for (int i = 0; i < (lineNumber * 4); i++){
+
+        fwrite(&memPtr[i], sizeof(uint8_t), 1, outputFile );
+
+    }
+
+    
 
 
         return EXIT_SUCCESS;
