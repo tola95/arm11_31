@@ -10,10 +10,7 @@
  //  Constants for the number of registers and the number of byte addresses.
 enum {REG = 17, MEM = 65536, MNEMONICS = 23};
 
-
-//  Boolean type enumeration.
 enum bool {F, T};
-
 
 //  Enumeration of instruction types. Useful when decoding instructions.
 enum instructionType {
