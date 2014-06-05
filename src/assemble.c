@@ -3,6 +3,8 @@
 #include <string.h>
 #include <stdint.h>
 #include "dataStructures.h"
+#include "dataP.h"
+#include "multiplyer.h"
 
 
 /*  ---------------------------------------------------------------------
@@ -35,20 +37,20 @@ enum bool lineIsLabel(char *line){
     return F;
 }
 
-//  Used to store a machine code value in the specified memory address.
+//  Used to store a value in the designated memory address.
 void putInMem(uint32_t memAddr, uint32_t value) {
     
-    uint8_t val = 0;
-    uint32_t mask = 0xff000000;
+        uint8_t val = 0;
+        uint32_t mask = 0xff000000;
         
-    for (int i = 0; i < 4; i++) {              //  Splits the 32bit value into 4 values of size 1 byte each.
-        val = (value & mask) >> ((3 - i)*8) ;  //  Then stores these bytes in 4 consecutive byte addresses.
-        memPtr[memAddr + i] = val;
-        mask >>= 8;
-    }
-
+        for (int i=3; i>=0; i--) {           //  Splits the 32bit value into 4 values of size 1 byte each.
+            val = (value & mask) >> (i*8) ;  //  Then stores these bytes in 4 consecutive byte addresses.
+            memPtr[memAddr + i] = val;
+            mask >>= 8;
+        }
     
 }
+    
 
 
 /*  ---------------------------------------------------------------------
@@ -56,15 +58,17 @@ void putInMem(uint32_t memAddr, uint32_t value) {
  *  ---------------------------------------------------------------------
  */
 int main(int argc, char **argv) {
+    
 
     /*  Initialise ARM memory where binary instructions will be stored
      *  after they have been converted from assembly.
      */
     initMem();
-
+    
+    
     //  Initialise the symbol tables used by the assembler.
     initST();
-
+ 
     //  Open the file containing the assembly code.
     FILE *inputFile = fopen(argv[1], "r");
     if (inputFile == NULL){
@@ -81,9 +85,9 @@ int main(int argc, char **argv) {
  *  labels are stored in a symbolTable with their corresponding memory addresses.
  */
      
-    int   lineNumber =  0;  //  Must keep track of line number to calculate memory addresses.
-    int   labelCount =  0;  //  Must keep track of number of labels to calculate memory addresses.
-    char  *line;            //  This variable stores the previously read line from the file.
+    int   lineNumber =  0;                    //  Must keep track of line number to calculate memory addresses.
+    int   labelCount =  0;                    //  Must keep track of number of labels to calculate memory addresses.
+    char  *line = malloc(sizeof(char)*50);    //  This variable stores the previously read line from the file.
 
     
     /*  fgets returns NULL pointer when it reaches the end of the file.
@@ -92,7 +96,7 @@ int main(int argc, char **argv) {
      *  fgets stores the next line in the 'line' variable.
      */
 
-    while( fgets(line, 100, inputFile ) != NULL){  //  Loops until the end of the file.
+    while(fgets(line, 100, inputFile ) != NULL){  //  Loops until the end of the file.
 
         lineNumber++;              //  Increase line number with each iteration.
         
@@ -119,7 +123,7 @@ int main(int argc, char **argv) {
  */
 
     while( fgets(line, 100, inputFile ) != NULL){  //  Loops until the end of the file.
-
+        
         if (lineIsLabel(line)) continue;      //  Skips label lines.
 
         lineNumber++;
@@ -135,44 +139,53 @@ int main(int argc, char **argv) {
         /*  Uses the opcode to decide how to decode the line and finds the
          *  the tokens needed for that particular operation type.
          */
-         
+         char  *rd;
+         char  *rn;
+         char  *op1;
+         char  *rm;
+         char  *rs;
+         //char  *l;
+
         switch(opcode) {
 
             //  Branch instructions.
-            case B    :  machineCode =   b(strtok(NULL, " ")) ; break;
-            case BEQ  :  machineCode = beq(strtok(NULL, " ")) ; break;
-            case BNE  :  machineCode = bne(strtok(NULL, " ")) ; break;
-            case BGE  :  machineCode = bge(strtok(NULL, " ")) ; break;
-            case BLT  :  machineCode = blt(strtok(NULL, " ")) ; break;
-            case BGT  :  machineCode = bgt(strtok(NULL, " ")) ; break;
-            case BLE  :  machineCode = ble(strtok(NULL, " ")) ; break;
+            //case B    :  machineCode =   b(strtok(NULL, " ")) ; break;
+            //case BEQ  :  machineCode = beq(strtok(NULL, " ")) ; break;
+            //case BNE  :  machineCode = bne(strtok(NULL, " ")) ; break;
+            //case BGE  :  machineCode = bge(strtok(NULL, " ")) ; break;
+            //case BLT  :  machineCode = blt(strtok(NULL, " ")) ; break;
+            //case BGT  :  machineCode = bgt(strtok(NULL, " ")) ; break;
+            //case BLE  :  machineCode = ble(strtok(NULL, " ")) ; break;
             //  Data processing with single operand assignment.
-            case MOV  :  machineCode = mov(strtok(NULL, " ,"), strtok(NULL, " ,")); break;
+            case MOV  : rd = strtok(NULL, ", "); op1 = strtok(NULL, ""); 
+            printf("%s%s\n", rd, op1);
+            machineCode = convertMov(opcode, rd, op1); 
+            break;
             //  Data processing, doesnt compute results.
-            case TST  :  machineCode = tst(strtok(NULL, " ,"), strtok(NULL, " ,")); break;
-            case TEQ  :  machineCode = teq(strtok(NULL, " ,"), strtok(NULL, " ,")); break;
-            case CMP  :  machineCode = cmp(strtok(NULL, " ,"), strtok(NULL, " ,")); break;
+            case TST  : ;
+            case TEQ  : ;
+            case CMP  : rn = strtok(NULL, " ,"); rn = strtok(NULL, ""); op1 = strtok(NULL, ""); machineCode = convertNonComputable(opcode, rn, op1) ; break;
             //  Data processing, computes results.
-            case AND  :  machineCode = and(strtok(NULL, " ,"), strtok(NULL, " ,"), strtok(NULL, " ,")); break;
-            case EOR  :  machineCode = eor(strtok(NULL, " ,"), strtok(NULL, " ,"), strtok(NULL, " ,")); break;
-            case SUB  :  machineCode = sub(strtok(NULL, " ,"), strtok(NULL, " ,"), strtok(NULL, " ,")); break;
-            case RSB  :  machineCode = rsb(strtok(NULL, " ,"), strtok(NULL, " ,"), strtok(NULL, " ,")); break;
-            case ADD  :  machineCode = add(strtok(NULL, " ,"), strtok(NULL, " ,"), strtok(NULL, " ,")); break;
-            case ORR  :  machineCode = orr(strtok(NULL, " ,"), strtok(NULL, " ,"), strtok(NULL, " ,")); break;
+            case AND  : ;
+            case EOR  : ;
+            case SUB  : ;
+            case RSB  : ;
+            case ADD  : ;
+            case ORR  :  rd = strtok(NULL, " ,"); rn = strtok(NULL, ","); op1 = strtok(NULL, ""); 
+                         machineCode = convertComputable(opcode, rd, rn, op1); break;
             //  Multiply instructions.
-            case MUL  :  machineCode = mul(strtok(NULL, " ,"), strtok(NULL, " ,"), strtok(NULL, " ,")); break;
-            case MLA  :  machineCode = mla(strtok(NULL, " ,"), strtok(NULL, " ,"),
-                                           strtok(NULL, " ,"), strtok(NULL, " ,")); break;
+            case MUL  :  rd = strtok(NULL, " ,"); rm = strtok(NULL, ","); rs = strtok(NULL, "");  machineCode = multiply(rd, rm, rs); break;
+            case MLA  :  rd = strtok(NULL, " ,"); rm = strtok(NULL, ","); rs = strtok(NULL, ""); rn = strtok(NULL, "");  machineCode = multiply_acc(rd, rm, rs, rn); break;
             //  Single data transfer instructions.
-            case LDR  :  machineCode = ldr(strtok(NULL, " ,"), strtok(NULL, " ,")); break;
-            case STR  :  machineCode = str(strtok(NULL, " ,"), strtok(NULL, " ,")); break;
+            //case LDR  :  machineCode = ldr(strtok(NULL, " ,"), strtok(NULL, " ,")); break;
+            //case STR  :  machineCode = str(strtok(NULL, " ,"), strtok(NULL, " ,")); break;
             //  For andeq.
             default   :  machineCode = 0; break;
-            
+
         }
 
         //  Store the new machine code instruction in the memory array.
-        putInMem((lineNumber*4), machineCode);
+        putInMem(((lineNumber-1)*4), machineCode);
     
     }
 
@@ -180,7 +193,7 @@ int main(int argc, char **argv) {
     fclose(inputFile);
 
     //  Create the output file. "ab" creates the file and opens for writing in binary mode.
-    FILE *outputFile = fopen(argv[2], "ab");
+    FILE *outputFile = fopen(argv[2], "w+b");
 
     //  Writes as many lines as were decoded to prevent thousands of 0s being written.
     for (int i = 0; i < (lineNumber * 4); i++){
@@ -189,7 +202,8 @@ int main(int argc, char **argv) {
 
     }
 
-    
+    //  Close the file once all instructions have been read.
+    fclose(outputFile);
 
 
         return EXIT_SUCCESS;
