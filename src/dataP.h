@@ -67,6 +67,22 @@ enum bool checkForComma(char *ptr) {
   return F;
 }
 
+uint32_t op2Ror(uint32_t op) {
+        printf("%08x\n", op);
+        printf("hi\n");
+        uint32_t rorAmt = 0;
+        uint32_t curr = op;
+        uint32_t mask = 0xc0000000;
+        while (curr > 255) {
+          uint32_t kj = (mask & curr) >> 30;
+          printf("%08x\n", kj);
+          curr <<= 2;
+          curr += kj;
+          rorAmt ++;
+        }
+        return (rorAmt <<= 8) + curr;
+}
+
 uint32_t getnumber(char *operand2) {
   char *imm = &operand2[1];
   if (operand2[1] == '0' && operand2[2] == 'x') {
@@ -79,14 +95,11 @@ uint32_t getnumber(char *operand2) {
 //This method is called by every function to get the initial form of the instruction(ALWAYS_COND) and to check
 //whether the operand2 was an immediate value or a shifted register. 
 uint32_t getOp2(char *operand2) {
-        
 	uint32_t initial = ALWAYS_COND;
 	if (operand2[0] == '#') {
 		uint32_t number = getnumber(operand2);
-		printf("%08x\n", number);
-		initial += number;
-		initial |= (1 << 25);  // 25th bit is set to let the emulator know that op2 is an immediate value;
-                printf("%08x\n", initial);
+	        initial += op2Ror(number);
+		initial += (1 << 25);  // 25th bit is set to let the emulator know that op2 is an immediate value;
 		return initial;
 	}
 	if (checkForComma(operand2)) { 
@@ -142,16 +155,6 @@ uint32_t getOpcode(enum mnemonic opcode) {
         }
 }
 
-uint32_t op2MovRor(uint32_t op) {
-        uint32_t rorAmt = 0;
-        uint32_t curr = op;
-        while (curr <= 256) {
-          curr >>= 2;
-          rorAmt += 2;
-        }
-        return (op <<= 8) + curr;
-}
-
 //Main (or a different method) checks that opCode and calls this method if the Mnemonic represents
 //functions that compute results (and, eor, sub, rsb, add, orr).
 uint32_t convertComputable(enum mnemonic opcode, char *rd, char *rn, char *operand2) {
@@ -168,6 +171,7 @@ uint32_t convertMov(enum mnemonic opcode, char *rd, char *operand2) {
 	uint32_t instruction = getOp2(trim(operand2));
 	instruction += getOpcode(opcode);
 	instruction += (getRegValue(rd) << 12);     //putting in the rd
+	printf("%08x\n", instruction);
 	return instruction;
 }
 
@@ -176,7 +180,7 @@ uint32_t convertMov(enum mnemonic opcode, char *rd, char *operand2) {
 //do not compute results (tst, teq, cmp).
 uint32_t convertNonComputable(enum mnemonic opcode, char *rn, char *operand2) {
 	uint32_t instruction = getOp2(trim(operand2));
-	instruction += op2MovRor(getOpcode(opcode));
+	instruction += getOpcode(opcode);
 	instruction |= (getRegValue(rn) << 16);     //putting in the rn
         instruction += (1 << 20);      //setting the s register
 	return instruction;
