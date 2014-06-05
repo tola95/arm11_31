@@ -15,7 +15,7 @@
  *  The structs that store the information of the fetched and decoded
  *  instructions in emulate.c .
  */
-
+ 
 //  Struct representing fetched instruction.
 struct fetchedInstruction {
 
@@ -64,7 +64,8 @@ void initdf(void) {
 }
 
 
-
+int lineNumber;
+int numberOfLines;
 /*  ---------------------------------------------------------------------
  *                DATA STRUCTURES USED IN ASSEMBLER
  *  ---------------------------------------------------------------------
@@ -188,7 +189,7 @@ void initST(void){
 
     //  An array containing all the mnemonics supported.
     char *mnemonicStrings[] = {
-    
+   
         "and", "eor", "sub", "rsb", "add", "tst", "teq", "cmp", "orr",
         "mov", "mul", "mla", "ldr", "str", "beq", "bne", "bge", "blt",
         "bgt", "ble", "b", "lsl", "andeq"

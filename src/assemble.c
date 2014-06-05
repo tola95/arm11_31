@@ -37,17 +37,8 @@ enum bool lineIsLabel(char *line){
     return F;
 }
 
-//  Used to store a value in the designated memory address.
-void putInMem(uint32_t memAddr, uint32_t value) {
-    
-        uint8_t val = 0;
-        uint32_t mask = 0xff000000;
-        
-        for (int i=3; i>=0; i--) {           //  Splits the 32bit value into 4 values of size 1 byte each.
-            val = (value & mask) >> (i*8) ;  //  Then stores these bytes in 4 consecutive byte addresses.
-            memPtr[memAddr + i] = val;
-            mask >>= 8;
-        }
+
+
     
 }
     
@@ -84,8 +75,8 @@ int main(int argc, char **argv) {
  *  The assembler uses "two-pass" assembly. This is the first pass in which all
  *  labels are stored in a symbolTable with their corresponding memory addresses.
  */
-     
-    int   lineNumber =  0;                    //  Must keep track of line number to calculate memory addresses.
+    
+    lineNumber =  0;                    //  Must keep track of line number to calculate memory addresses.
     int   labelCount =  0;                    //  Must keep track of number of labels to calculate memory addresses.
     char  *line = malloc(sizeof(char)*50);    //  This variable stores the previously read line from the file.
 
@@ -109,6 +100,8 @@ int main(int argc, char **argv) {
         
     }
 
+    numberOfLines = lineNumber - labelCount;
+
     //  Return to the start of the file in preparation for the second pass.
     fseek( inputFile, 0, SEEK_SET );
     lineNumber = 0;
@@ -130,7 +123,7 @@ int main(int argc, char **argv) {
 
         /* Gets the token reprsenting the mnemonic of the line and uses lookup
          * to return its enum mnemonic equivalent.
-         */  
+         */ 
         enum mnemonic opcode = lookup(&opCodes, strtok(line, " "));
 
         //  uint32_t to store the machine code from the assembled line.
@@ -177,8 +170,8 @@ int main(int argc, char **argv) {
             case MUL  :  rd = strtok(NULL, " ,"); rm = strtok(NULL, ","); rs = strtok(NULL, "");  machineCode = multiply(rd, rm, rs); break;
             case MLA  :  rd = strtok(NULL, " ,"); rm = strtok(NULL, ","); rs = strtok(NULL, ""); rn = strtok(NULL, "");  machineCode = multiply_acc(rd, rm, rs, rn); break;
             //  Single data transfer instructions.
-            //case LDR  :  machineCode = ldr(strtok(NULL, " ,"), strtok(NULL, " ,")); break;
-            //case STR  :  machineCode = str(strtok(NULL, " ,"), strtok(NULL, " ,")); break;
+            case LDR  :  machineCode = ldr(strtok(NULL, " ,"), strtok(NULL, " ,")); break;
+            case STR  :  machineCode = str(strtok(NULL, " ,"), strtok(NULL, " ,")); break;
             //  For andeq.
             default   :  machineCode = 0; break;
 
@@ -196,7 +189,7 @@ int main(int argc, char **argv) {
     FILE *outputFile = fopen(argv[2], "w+b");
 
     //  Writes as many lines as were decoded to prevent thousands of 0s being written.
-    for (int i = 0; i < (lineNumber * 4); i++){
+    for (int i = 0; i < (numberOfLines * 4); i++){
 
         fwrite(&memPtr[i], sizeof(uint8_t), 1, outputFile );
 

@@ -1020,7 +1020,7 @@ void executeDecodedInstruction(void){
      
 
      printFinalState();
-    
+     free(memPtr); //Free the memory!!
 
         return EXIT_SUCCESS;
 
