@@ -65,7 +65,7 @@ void initdf(void) {
 
 
 /*  ---------------------------------------------------------------------
- *                   DATA STRUCTURES USED IN EMULATOR
+ *                   DATA STRUCTURES USED IN ASSEMBLER
  *  ---------------------------------------------------------------------
  *
  *  Includes the implementation of the symbol table which will be used to

@@ -105,7 +105,7 @@ int main(int argc, char **argv) {
  */
 
     while( fgets(line, 100, file ) != NULL){  //  Loops until the end of the file.
-    
+      
     }
 
 
