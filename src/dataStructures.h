@@ -3,6 +3,7 @@
 #include <math.h>
 #include <stdint.h>
 #include <assert.h>
+#include <string.h>
 #include "arm11Mem.h"
 
 
@@ -14,7 +15,7 @@
  *  The structs that store the information of the fetched and decoded
  *  instructions in emulate.c .
  */
- 
+
 //  Struct representing fetched instruction.
 struct fetchedInstruction {
 
@@ -188,9 +189,9 @@ void initST(void){
     //  An array containing all the mnemonics supported.
     char *mnemonicStrings[] = {
     
-        "and", "eor", "sub", "rsb", "add", "tst", "mov", "mul", "mla",
-        "ldr", "str", "beq", "bne", "bge", "blt", "bgt", "ble", "b",
-        "lsl", "andeq"
+        "and", "eor", "sub", "rsb", "add", "tst", "teq", "cmp", "orr",
+        "mov", "mul", "mla", "ldr", "str", "beq", "bne", "bge", "blt",
+        "bgt", "ble", "b", "lsl", "andeq"
     };
 
     /*  Makes a symbol table containing all the mnemonics. Look up a string
