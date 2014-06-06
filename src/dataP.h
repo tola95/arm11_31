@@ -18,22 +18,6 @@ typedef struct deconstruct {
 //To initialise and allocate space for data struct
 Data *ops2;
 
-
-//This function takes in the rest of operand2 string and breaks it down into different components and is stored globally in the struct.
-void tokenised(Data *ptr, char *operand2) {
-  const char delims[3] = ", ";
-  char *result;
-  result = strtok(operand2, delims);
-  ops2->rm = result;         //This is the rm register taken from the operand stored in the struct.
-  
-  result = strtok(NULL, delims);
-  ops2->shiftName = result;  //This is the shiftname taken from the operand and stored in the struct.
-  
-  result = strtok(NULL, delims);
-  ops2->shiftOp = result;    //This is the shiftOp taken from the operand and stored in the struct.
-}
-
-
 char *trim(char *str) {
   char *result = str;
   int i = 0;
@@ -43,6 +27,21 @@ char *trim(char *str) {
   }
   return result;
 }
+
+//This function takes in the rest of operand2 string and breaks it down into different components and is stored globally in the struct.
+void tokenised(Data *ptr, char *operand2) {
+  const char delims[3] = ", ";
+  char *result;
+  result = strtok(operand2, delims);
+  ops2->rm = trim(result);         //This is the rm register taken from the operand stored in the struct.
+  
+  result = strtok(NULL, delims);
+  ops2->shiftName = trim(result);  //This is the shiftname taken from the operand and stored in the struct.
+  
+  result = strtok(NULL, delims);
+  ops2->shiftOp = trim(result);    //This is the shiftOp taken from the operand and stored in the struct.
+}
+
 
 //This function is called to return the binary form of lsl, lsr, ror, asr.
 uint32_t getShiftType(char *ptr) {
@@ -82,60 +81,51 @@ uint32_t op2Ror(uint32_t op) {
 
 uint32_t getnumber(char *operand2) {
   char *imm = &operand2[1];
-  if (operand2[1] == '0' && operand2[2] == 'x') {
+  if (operand2[2] == 'x') {
     imm = &operand2[3];
     return strtol(imm, NULL, 16);
   }
   return atoi(imm);
 }
 
-//This method is called by every function to get the initial form of the instruction(ALWAYS_COND) and to check
-//whether the operand2 was an immediate value or a shifted register. 
-uint32_t getOp2(char *operand2) {
-	uint32_t initial = ALWAYS_COND;
-	if (operand2[0] == '#') {
-		uint32_t number = getnumber(operand2);
-	        initial += op2Ror(number);
-		initial += (1 << 25);  // 25th bit is set to let the emulator know that op2 is an immediate value;
-		return initial;
-	}
-	if (checkForComma(operand2)) { 
-	  ops2 = malloc(sizeof(Data));
-	  tokenised(ops2, operand2);
-	  char *ptr = ((ops2->rm) + 1);
-	  uint32_t rm = atoi(ptr);
-	  uint32_t shiftT = getShiftType(ops2->shiftName);
-	  uint32_t shiftby;
-	  if (ops2->shiftOp[0] == '#') {
-	    char *p = ((ops2->shiftOp) + 1);
-            shiftby = atoi(p);
-            initial += (shiftby << 7);
-	  } else {
-	    char *reg = ((ops2->shiftOp) + 1);
-	    shiftby = atoi(reg);
-	    initial += (shiftby << 8);
-	    initial += (1 << 4);
-	}
-	initial += rm;
-	initial += (shiftT) << 5;
-	return initial;
-	}
-        if (strstr(operand2, "=")) {
-          char *ex = &operand2[3];
-          initial += (1 << 25); 
-          return initial + atoi(ex);
-        }
-	uint32_t rm = atoi(operand2 + 1);
-	return initial += rm;
-
-}
-
-//This should probably be the main instruction that can be applied to any data processing instruction.   
-
 uint32_t getRegValue(char *reg) {
         char *p = ((reg) + 1);
         return atoi(p);
 }
+
+
+uint32_t getOp2(char *operand2) {
+       uint32_t initial = ALWAYS_COND;      
+       if (operand2[0] != 'r') {
+           uint32_t number = getnumber(operand2);
+           initial+= op2Ror(number);
+           initial += (1 << 25);
+           return initial;
+       }
+       if (checkForComma(operand2)) {
+           ops2 = malloc(sizeof(Data));
+           tokenised(ops2, operand2);
+           uint32_t rm = getRegValue(ops2->rm);
+           uint32_t shiftT = getShiftType(ops2->shiftName);
+           uint32_t shiftby;
+           if (ops2->shiftOp[0] == '#') {
+               shiftby = getnumber(ops2->shiftOp);
+               initial += (shiftby << 7);
+           } else {
+               initial += (1 << 4);
+               initial += ((getRegValue(ops2->shiftOp)) << 8);
+           }
+           initial += rm;
+           initial += (shiftT) << 5;
+           return initial;
+       }
+       uint32_t rm = atoi(operand2 + 1);
+       return initial += rm;
+}
+
+//This should probably be the main instruction that can be applied to any data processing instruction.   
+
+
 
 uint32_t getOpcode(enum mnemonic opcode) {
 
@@ -155,6 +145,18 @@ uint32_t getOpcode(enum mnemonic opcode) {
             return 0;
         }
 }
+
+uint32_t lsl(enum mnemonic opcode, char *rd, char *rm, char *op1) {
+        uint32_t instruction = ALWAYS_COND;        
+        instruction += getOpcode(opcode);      
+        instruction += (getRegValue(rd) << 12);
+        instruction += getRegValue(rm);
+        char *endptr;
+        char *val = &op1[1];        
+        instruction += (uint32_t) (strtol(val, &endptr, 0) << 7); 
+        return instruction;
+}
+
 
 //Main (or a different method) checks that opCode and calls this method if the Mnemonic represents
 //functions that compute results (and, eor, sub, rsb, add, orr).
