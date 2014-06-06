@@ -5,6 +5,7 @@
 #include "dataStructures.h"
 #include "dataP.h"
 #include "multiplyer.h"
+#include "SingleDT.h"
 
 
 /*  ---------------------------------------------------------------------
@@ -40,7 +41,7 @@ enum bool lineIsLabel(char *line){
 
 
     
-}
+
     
 
 
@@ -150,14 +151,15 @@ int main(int argc, char **argv) {
             //case BGT  :  machineCode = bgt(strtok(NULL, " ")) ; break;
             //case BLE  :  machineCode = ble(strtok(NULL, " ")) ; break;
             //  Data processing with single operand assignment.
+            case LSL  : ;
             case MOV  : rd = strtok(NULL, ", "); op1 = strtok(NULL, ""); 
-            printf("%s%s\n", rd, op1);
             machineCode = convertMov(opcode, rd, op1); 
             break;
             //  Data processing, doesnt compute results.
             case TST  : ;
             case TEQ  : ;
-            case CMP  : rn = strtok(NULL, " ,"); rn = strtok(NULL, ""); op1 = strtok(NULL, ""); machineCode = convertNonComputable(opcode, rn, op1) ; break;
+            case CMP  : rn = strtok(NULL, " ,"); op1 = strtok(NULL, ""); 
+                             machineCode =     convertNonComputable(opcode, rn, op1) ; break;
             //  Data processing, computes results.
             case AND  : ;
             case EOR  : ;
@@ -168,10 +170,12 @@ int main(int argc, char **argv) {
                          machineCode = convertComputable(opcode, rd, rn, op1); break;
             //  Multiply instructions.
             case MUL  :  rd = strtok(NULL, " ,"); rm = strtok(NULL, ","); rs = strtok(NULL, "");  machineCode = multiply(rd, rm, rs); break;
-            case MLA  :  rd = strtok(NULL, " ,"); rm = strtok(NULL, ","); rs = strtok(NULL, ""); rn = strtok(NULL, "");  machineCode = multiply_acc(rd, rm, rs, rn); break;
+            case MLA  :  rd = strtok(NULL, " ,"); rm = strtok(NULL, ","); rs = strtok(NULL, ", "); rn = strtok(NULL, ""); machineCode = multiply_acc(rd, rm, rs, rn); break;
             //  Single data transfer instructions.
-            case LDR  :  machineCode = ldr(strtok(NULL, " ,"), strtok(NULL, " ,")); break;
-            case STR  :  machineCode = str(strtok(NULL, " ,"), strtok(NULL, " ,")); break;
+            case LDR  : rn =  strtok(NULL, " ,"); op1 = strtok(NULL, "");
+                        machineCode = ldr(rn, op1, opcode); break;
+            case STR  : rn =  strtok(NULL, " ,"); op1 = strtok(NULL, "");
+                        machineCode = str(rn, op1, opcode); break;
             //  For andeq.
             default   :  machineCode = 0; break;
 

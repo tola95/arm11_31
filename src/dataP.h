@@ -68,14 +68,11 @@ enum bool checkForComma(char *ptr) {
 }
 
 uint32_t op2Ror(uint32_t op) {
-        printf("%08x\n", op);
-        printf("hi\n");
         uint32_t rorAmt = 0;
         uint32_t curr = op;
         uint32_t mask = 0xc0000000;
         while (curr > 255) {
           uint32_t kj = (mask & curr) >> 30;
-          printf("%08x\n", kj);
           curr <<= 2;
           curr += kj;
           rorAmt ++;
@@ -123,8 +120,12 @@ uint32_t getOp2(char *operand2) {
 	initial += (shiftT) << 5;
 	return initial;
 	}
+        if (strstr(operand2, "=")) {
+          char *ex = &operand2[3];
+          initial += (1 << 25); 
+          return initial + atoi(ex);
+        }
 	uint32_t rm = atoi(operand2 + 1);
-	printf("%i\n", rm);
 	return initial += rm;
 
 }
@@ -171,7 +172,6 @@ uint32_t convertMov(enum mnemonic opcode, char *rd, char *operand2) {
 	uint32_t instruction = getOp2(trim(operand2));
 	instruction += getOpcode(opcode);
 	instruction += (getRegValue(rd) << 12);     //putting in the rd
-	printf("%08x\n", instruction);
 	return instruction;
 }
 

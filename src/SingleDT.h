@@ -118,7 +118,7 @@ uint32_t caseNumericConstant( uint32_t rd, uint32_t address ) {
   result |= (1 << 23);   //u bit is set
   
 
-  if (address > 255) {
+  
     
     //Put value of expression in four bytes at the end of the assembled program : ToDo
     putInMem((numberOfLines)*4, address); //newaddress is the next available adress at the end of the assembled program
@@ -134,10 +134,10 @@ uint32_t caseNumericConstant( uint32_t rd, uint32_t address ) {
      numberOfLines++;
     return result;
 
-  } else {
+  
     
-    return 0;//mov(rd, address);
-  }
+    
+  
 }
 
 uint32_t casePreIndexedAdSpec( uint32_t rd, uint32_t address , uint32_t expression, enum mnemonic opcode) {
@@ -160,6 +160,7 @@ uint32_t casePreIndexedAdSpec( uint32_t rd, uint32_t address , uint32_t expressi
   result |= expression;
   result |= (14 << 28); //Cond bits always 'al'
   result |= (1 << 23);   //u bit is set
+  printf("%08x\n",result);
   return result;
 }
 
@@ -195,8 +196,11 @@ uint32_t ldr(char* rd,  char* address, enum mnemonic opcode) {
   char *ad = &address[3];
   switch(address[0]) {
     // Case where address is =0x....
-    case '='  :  return caseNumericConstant(atoi(ptr), strtol(ad, NULL, 16));
-
+    case '='  :  if ( strtol(ad, NULL, 16) > 255 ) {
+                   return caseNumericConstant(atoi(ptr), strtol(ad, NULL, 16));
+                 } else {
+                   return convertMov(MOV, rd, address);
+                 }
     //Case where address is [rn] , [rn, #expression] or [rn,{+/-}rm{,<shift>}]
     case '['  :  
 
