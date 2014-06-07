@@ -119,7 +119,6 @@ int main(int argc, char **argv) {
     while( fgets(line, 100, inputFile ) != NULL){  //  Loops until the end of the file.
         
         if (lineIsLabel(line)) continue;      //  Skips label lines.
-
         lineNumber++;
 
         /* Gets the token reprsenting the mnemonic of the line and uses lookup
@@ -151,7 +150,7 @@ int main(int argc, char **argv) {
             //case BGT  :  machineCode = bgt(strtok(NULL, " ")) ; break;
             //case BLE  :  machineCode = ble(strtok(NULL, " ")) ; break;
             //  Data processing with single operand assignment.
-            case LSL  : ;
+            case LSL  : rd = strtok(NULL, ", "); op1 = strtok(NULL, "");  machineCode = lsl(MOV, rd, rd, op1); break;
             case MOV  : rd = strtok(NULL, ", "); op1 = strtok(NULL, ""); 
             machineCode = convertMov(opcode, rd, op1); 
             break;
