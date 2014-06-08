@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include "optionals.h"
 
 //  Used to store a machine code value in the specified memory address.
  void putInMem(uint32_t memAddr, uint32_t value) {
@@ -16,160 +17,6 @@
         }    
 }
 
-int minus = 0;
-int isRegister = 0;
-int pre = 0;
-int shift;
-
-//Single Data Transfer Functions
-
-/**********************************************************************/         
-/********Helper Functions to retrieve Rm, expression and Rn************/
-/**********************************************************************/
-
- uint32_t getRn1(char *address) {
-   //Gets the register number for registers of form [Rn]
-   const char *p1 = strstr(address, "[r")+2;
-   const char *p2 = strstr(p1, "]");
-   size_t len = p2-p1;
-   char *res = (char*)malloc(sizeof(char)*(len+1));
-   strncpy(res, p1, len);
-   res[len] = '\0';
-   return atoi(res);
- }
-
-uint32_t getRn(char *address) {
-   //Gets the register number for registers of form [Rn,...
-   const char *p1 = strstr(address, "[r")+2; 
-   const char *p2 = strstr(p1, ",");
-   size_t len = p2-p1;
-   char *res = (char*)malloc(sizeof(char)*(len+1));
-   strncpy(res, p1, len);
-   res[len] = '\0';
-   return atoi(res);
- }
-
- uint32_t getExpr(char *address) {
-  //Gets expression of for #expression
-   if (strstr(address, "#")!=NULL) {
-     const char *p1;
-     if (strstr(address, "x") == NULL) {
-       p1 = strstr(address, "#")+1;
-     } else {
-       if (strstr(address, "-")==NULL) {
-         p1 = strstr(address, "#")+3;
-       } else {
-         minus = 1;
-         p1 = strstr(address, "#")+4;
-       }
-     }
-     const char *p2 = strstr(p1, "]");
-     size_t len = p2-p1;
-     char *res = (char*)malloc(sizeof(char)*(len+1));
-     strncpy(res, p1, len);
-     res[len] = '\0';
-     return atoi(res);
-   } else {
-     const char *p1 = strstr(address, ",r")+2; 
-     const char *p2 = strstr(p1, "]");
-     size_t len = p2-p1;
-     char *res = (char*)malloc(sizeof(char)*(len+1));
-     strncpy(res, p1, len);
-     res[len] = '\0';
-     isRegister = 1;
-     return atoi(res);
-   }
-   
- }
-
- uint32_t getExpr1(char *address) {
-  //Gets expression of for #expression
-   if (strstr(address, "#")!=NULL) {
-   const char *p1;
-   if (strstr(address, "x") == NULL) {
-     p1 = strstr(address, "#")+1;
-   } else {
-     if (strstr(address, "-")==NULL) {
-       p1 = strstr(address, "#")+3;
-     } else {
-       minus = 1;
-       p1 = strstr(address, "#")+4;
-     }
-   }
-  
-   return atoi(p1);
-   } else {
-   const char *p1 = strstr(address, ",r")+2; 
-  
-   isRegister = 1;
-   printf("%s", p1);
-   return atoi(p1);
-   }
- }
-
- uint32_t getRm(char *address) {
-   //Gets Rm from the optional cases
-   const char *p1;
-   if (strstr(address, "-") != NULL ) {
-     p1 = strstr(address, "-")+2; 
-   } else {
-     p1 = strstr(address, "+")+2;
-   }
-   const char *p2 = strstr(p1, ",");
-   size_t len = p2-p1;
-   char *res = (char*)malloc(sizeof(char)*(len+1));
-   strncpy(res, p1, len);
-   res[len] = '\0';
-   return atoi(res);
- }
-
-uint32_t getExpr2(char *address) {
-  if (strstr(address, "#")!=NULL) {
-  const char *p1 = strstr(address, "#")+1;
-   const char *p2 = strstr(p1, "]");
-   size_t len = p2-p1;
-   char *res = (char*)malloc(sizeof(char)*(len+1));
-   strncpy(res, p1, len);
-   res[len] = '\0';
-   return atoi(res);
-   } else {
-   isRegister = 1;
-   return 0;
-   }
-}
-
- int count_chars(const char* string, char *ch)
-{
-    int count = 0;
-    int i;
-
-    int length = strlen(string);
-
-    for (i = 0; i < length; i++)
-    {
-        if (string[i] == ch[0])
-        {
-            count++;
-        }
-    }
-
-    return count;
-}
-
- int noOfCommas(char *address) {
-   char *comma = ",";
-   return count_chars(address, comma);
-}
-
- int noOfArgs(char *address) { //Gets number of args, necessary to distinguish between <address> cases
-   if(strstr(address, ",") == NULL) {
-     return 1;
-   } else if ( noOfCommas(address) == 1){ //strstr(address, "+") == NULL && strstr(address, "-") == NULL
-     return 2;                            //noOfCommas(address) == 1
-   } else {
-     return 3;
-   }
- }
 
 /******************************************************************************************************/
 /******************Helpers to set bits for the different cases as explained in spec Pg 15**************/
@@ -220,7 +67,7 @@ uint32_t casePreIndexedAdSpec( uint32_t rd, uint32_t address , uint32_t expressi
     case STR : result |= (0 << 20) ;    // don't set L bit
     default : break;         
   }
-  printf("%x\n", expression);
+
   result |= (0x01 << 26) ; //bits 27 and 26 are 0 and 1 respectively
   result |= (0x00 << 21) ; //bits 22 and 21 are 0 and 0 respectively
   result |= (rd << 12);    //bits 15 t0 12 represent the rd
@@ -236,8 +83,6 @@ uint32_t casePreIndexedAdSpec( uint32_t rd, uint32_t address , uint32_t expressi
   if (isRegister == 1) {
     result |= 0x02000000;
   }
-  printf("%08x\n",result);
-  printf("Here\n");
   return result;
 }
 
@@ -251,7 +96,6 @@ uint32_t casePostIndexedAdSpec( uint32_t rd, uint32_t address , uint32_t express
     case STR : result |= (0 << 20) ;    // don't set L bit
     default : break;         
   }
-  printf("%x\n", expression);
   result |= (0x01 << 26) ; //bits 27 and 26 are 0 and 1 respectively
   result |= (0x00 << 21) ; //bits 22 and 21 are 0 and 0 respectively
   result |= (rd << 12);    //bits 15 t0 12 represent the rd
@@ -271,44 +115,7 @@ uint32_t casePostIndexedAdSpec( uint32_t rd, uint32_t address , uint32_t express
   return result;
 }
 
- uint32_t caseOptional(uint32_t rd, uint32_t rn, uint32_t rm, uint32_t expression, enum mnemonic opcode) {
-   uint32_t result = 0x0;
 
-   switch (opcode) {
-    
-    case LDR : result |= (1 << 20) ;    //set L bit
-    case STR : result |= (0 << 20) ;    // don't set L bit
-    default : break;         
-  }
-  
-  result |= (0x01 << 26) ; //bits 27 and 26 are 0 and 1 respectively
-  result |= (0x00 << 21) ; //bits 22 and 21 are 0 and 0 respectively
-  result |= (rd << 12);    //bits 15 t0 12 represent the rd
-  result |= (rn << 16);    //with rn as base reg
-  if (pre == 1) {
-    result |= (1 << 24);
-  } else {
-    result |= (0 << 24);
-  }
-   result |= (1 << 25); //i is set since address is register
-   result |= (14 << 28); //Cond bits always 'al'
-   if (minus == 1) {
-    result |= (0 << 23);
-  } else {
-    result |= (1 << 23);
-  }
-  
-  result |= rm;
-  result |= (shift << 5);
-  result |= (expression >> 20);
-
-  if (isRegister == 1) {
-    result |= (0 << 4);
-  } 
-
-  return result;
-
- }
 
 /**************************************************************/
 /*******************LDR and STR Functions**********************/
@@ -356,7 +163,7 @@ uint32_t ldr(char* rd,  char* address, enum mnemonic opcode) {
              ;
            }
            
-           return caseOptional(atoi(ptr), getRn(address), getRm(address) , getExpr2(address), opcode); 
+           return caseOptional(atoi(ptr), address, opcode); 
 
            default : return 0; //Should never reach this
         }
@@ -390,7 +197,7 @@ uint32_t ldr(char* rd,  char* address, enum mnemonic opcode) {
              ;
            }
            
-           return caseOptional(atoi(ptr), getRn(address), getRm(address) , getExpr2(address), opcode); 
+           return caseOptional(atoi(ptr), address, opcode); 
 
            default : return 0; //Should never reach this
 
@@ -437,7 +244,7 @@ uint32_t str(char* rd,  char* address, enum mnemonic opcode) {
              ;
            }
            
-           return caseOptional(atoi(ptr), getRn(address), getRm(address) , getExpr2(address), opcode); 
+           return caseOptional(atoi(ptr), address, opcode); 
 
            default : return 0; //Should never reach this
 
@@ -470,7 +277,7 @@ uint32_t str(char* rd,  char* address, enum mnemonic opcode) {
              ;
            }
            
-           return caseOptional(atoi(ptr), getRn(address), getRm(address) , getExpr2(address), opcode); 
+           return caseOptional(atoi(ptr), address, opcode); 
 
            default : return 0; //Should never reach this
 
