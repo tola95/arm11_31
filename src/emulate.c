@@ -585,12 +585,23 @@ void branch(uint32_t offset) {
 
   uint32_t sign = getVal(offset, 23, 23);
   offset <<= 2 ;
-  offset &= 0x03ffffff;
-        
+  offset &= 0x03ffffff;  //  Is this necessary ?!?
+
+  //  What I think the following code should be
+
+  /*  int32_t signedOff; must be a signed value.
+   *  if (sign == 1) {
+   *      signedOff = -pow(2,25) + getVal(offset, 24, 0);
+   *  }
+
+   */
+
+// Not this ----------------------------
   if (sign == 1) {
         
      offset += 0xfc000000;
   }
+// -------------------------------------
                 
   PC_ += offset;
   (fetched -> pending) = F;
