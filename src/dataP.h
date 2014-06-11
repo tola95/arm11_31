@@ -172,8 +172,11 @@ uint32_t convertComputable(enum mnemonic opcode, char *rd, char *rn, char *opera
 //Main (or a different method) checks the opCode and calls this method if the Mnemonic is mov.
 uint32_t convertMov(enum mnemonic opcode, char *rd, char *operand2) {
 	uint32_t instruction = getOp2(trim(operand2));
+	printf("%x\n", instruction);
 	instruction += getOpcode(opcode);
-	instruction += (getRegValue(rd) << 12);     //putting in the rd
+printf("%x\n", instruction);
+	instruction += (getRegValue(rd) << 12);
+printf("%x\n", instruction);     //putting in the rd
 	return instruction;
 }
 

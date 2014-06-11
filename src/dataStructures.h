@@ -158,14 +158,14 @@ void symbolTableInsert(struct symbolTable *st, char *string, int value) {
 
 //  This function should only be called when the string is a known member of the symbolTable.
 int lookup(struct symbolTable *st, char *string){
-
+    
     struct symbolTableElem *elem = table_start(st);
-
+    
     while (elem != NULL) {
 
         if ( !strcmp(elem->string, string) ) {
 
-            return elem->value;
+            return elem->value; 
         }
         
         elem = elem->next;

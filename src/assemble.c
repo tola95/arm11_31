@@ -6,6 +6,7 @@
 #include "dataP.h"
 #include "multiplyer.h"
 #include "SingleDT.h"
+#include "branch.h"
 
 
 /*  ---------------------------------------------------------------------
@@ -90,11 +91,19 @@ int main(int argc, char **argv) {
 
     while(fgets(line, 100, inputFile ) != NULL){  //  Loops until the end of the file.
 
-        lineNumber++;              //  Increase line number with each iteration.
+        if (strcmp(line,"\n")) lineNumber++ ;     //  Increase line number with each iteration.
         
         if ( lineIsLabel(line) ){  //  Add the line to the symbol table if it is a label.
-
-            addToSymbolTable(line, lineNumber, labelCount);
+        
+        int length = strlen(line);
+        char* lin = calloc(length , sizeof(char)); //Remove the ':' from behind the string
+        for (int i=0; i<length; i++) {
+	  if (line[i]==':') break;
+          lin[i] = line[i];
+        } 
+        
+            addToSymbolTable(lin, lineNumber, labelCount);
+           
             labelCount++;          //  Indicates how many labels have been found so far.
             
         }
@@ -119,6 +128,7 @@ int main(int argc, char **argv) {
     while( fgets(line, 100, inputFile ) != NULL){  //  Loops until the end of the file.
         
         if (lineIsLabel(line)) continue;      //  Skips label lines.
+	if (!strcmp(line, "\n")) continue;
         lineNumber++;
 
         /* Gets the token reprsenting the mnemonic of the line and uses lookup
@@ -138,21 +148,75 @@ int main(int argc, char **argv) {
          char  *rm;
          char  *rs;
          //char  *l;
-
+         char* p;
+         char* lin;
+         int length;
+        
         switch(opcode) {
 
-            //  Branch instructions.
-            //case B    :  machineCode =   b(strtok(NULL, " ")) ; break;
-            //case BEQ  :  machineCode = beq(strtok(NULL, " ")) ; break;
-            //case BNE  :  machineCode = bne(strtok(NULL, " ")) ; break;
-            //case BGE  :  machineCode = bge(strtok(NULL, " ")) ; break;
-            //case BLT  :  machineCode = blt(strtok(NULL, " ")) ; break;
-            //case BGT  :  machineCode = bgt(strtok(NULL, " ")) ; break;
-            //case BLE  :  machineCode = ble(strtok(NULL, " ")) ; break;
+             // Branch instructions.
+            case B    :  p = strtok(NULL, " ");
+                         length = strlen(p);
+                         lin = calloc(length , sizeof(char)); //Remove the ':' from behind the string
+                         for (int i=0; i<length; i++) {
+	                  if (p[i]=='\n') break;
+                          lin[i] = p[i];
+                         } 
+                     machineCode =   b(lin) ; break;
+            case BEQ  :   
+                          p = strtok(NULL, " ");
+                          length = strlen(p);
+                         lin = calloc(length , sizeof(char)); //Remove the ':' from behind the string
+                         for (int i=0; i<length; i++) {
+	                  if (p[i]=='\n') break;
+                          lin[i] = p[i];
+                         } 
+                           machineCode = beq(lin) ; break;
+            case BNE  : p = strtok(NULL, " ");
+                          length = strlen(p);
+                         lin = calloc(length , sizeof(char)); //Remove the ':' from behind the string
+                         for (int i=0; i<length; i++) {
+	                  if (p[i]=='\n') break;
+                          lin[i] = p[i];
+                         } 
+                        machineCode = bne(lin) ; break;
+            case BGE  :  p = strtok(NULL, " ");
+                          length = strlen(p);
+                         lin = calloc(length , sizeof(char)); //Remove the ':' from behind the string
+                         for (int i=0; i<length; i++) {
+	                  if (p[i]=='\n') break;
+                          lin[i] = p[i];
+                         } 
+                        machineCode = bge(lin) ; break;
+            case BLT  : p = strtok(NULL, " ");
+                         length = strlen(p);
+                         lin = calloc(length , sizeof(char)); //Remove the ':' from behind the string
+                         for (int i=0; i<length; i++) {
+	                  if (p[i]=='\n') break;
+                          lin[i] = p[i];
+                         } 
+                        machineCode = blt(lin) ; break;
+            case BGT  :  p = strtok(NULL, " ");
+                           length = strlen(p);
+                         lin = calloc(length , sizeof(char)); //Remove the ':' from behind the string
+                         for (int i=0; i<length; i++) {
+	                  if (p[i]=='\n') break;
+                          lin[i] = p[i];
+                         } 
+                         machineCode = bgt(lin) ; break;
+            case BLE  : p = strtok(NULL, " ");
+                          length = strlen(p);
+                        lin = calloc(length , sizeof(char)); //Remove the ':' from behind the string
+                         for (int i=0; i<length; i++) {
+	                  if (p[i]=='\n') break;
+                          lin[i] = p[i];
+                         } 
+                         machineCode = ble(lin) ; break;
             //  Data processing with single operand assignment.
             case LSL  : rd = strtok(NULL, ", "); op1 = strtok(NULL, "");  machineCode = lsl(MOV, rd, rd, op1); break;
             case MOV  : rd = strtok(NULL, ", "); op1 = strtok(NULL, ""); 
             machineCode = convertMov(opcode, rd, op1); 
+
             break;
             //  Data processing, doesnt compute results.
             case TST  : ;
@@ -168,8 +232,11 @@ int main(int argc, char **argv) {
             case ORR  :  rd = strtok(NULL, " ,"); rn = strtok(NULL, ","); op1 = strtok(NULL, ""); 
                          machineCode = convertComputable(opcode, rd, rn, op1); break;
             //  Multiply instructions.
-            case MUL  :  rd = strtok(NULL, " ,"); rm = strtok(NULL, ","); rs = strtok(NULL, "");  machineCode = multiply(rd, rm, rs); break;
-            case MLA  :  rd = strtok(NULL, " ,"); rm = strtok(NULL, ","); rs = strtok(NULL, ", "); rn = strtok(NULL, ""); machineCode = multiply_acc(rd, rm, rs, rn); break;
+            case MUL  :  rd = strtok(NULL, " ,"); rm = strtok(NULL, ","); rs = strtok(NULL, "");  
+                          machineCode = multiply(rd, rm, rs); break;
+            case MLA  :  rd = strtok(NULL, " ,"); rm = strtok(NULL, ","); rs = strtok(NULL, ", "); 
+                         rn = strtok(NULL, "");
+                         machineCode = multiply_acc(rd, rm, rs, rn); break;
             //  Single data transfer instructions.
             case LDR  : rn =  strtok(NULL, " ,"); op1 = strtok(NULL, "");
                         machineCode = ldr(rn, op1, opcode); break;

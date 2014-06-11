@@ -43,7 +43,7 @@ uint32_t caseNumericConstant( uint32_t rd, uint32_t address ) {
     //Use this address, with PC as base reg and calculated offset, in assembled ldr instrction
     result |= (15 << 16); //with PC as base reg (rn)
     offset = (((numberOfLines + 1) - lineNumber) * 4) - 8;  //Compute the offset between current location and newly created one
-                                           //Current adress is the address of this current instruction we're decoding
+                                           
     result |= offset;
     result |= (1 << 24); //Always pre index 
     result |= (14 << 28); //Cond bits always 'al'
