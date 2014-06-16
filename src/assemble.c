@@ -179,7 +179,7 @@ int main(int argc, char **argv) {
 	                  if (p[i]=='\n') break;
                           lin[i] = p[i];
                          } 
-                        machineCode = bne(lin) ; break;
+                        machineCode = bne(lin) ; printf("%08x\n",machineCode); break;
             case BGE  :  p = strtok(NULL, " ");
                           length = strlen(p);
                          lin = calloc(length , sizeof(char)); //Remove the ':' from behind the string

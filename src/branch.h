@@ -45,9 +45,9 @@ uint32_t beq(char* label) {
     uint32_t cond = 0x0 << 28;  //  insignificant but added for consistency.
 	uint32_t offset = lookup(&labels, label) - ((lineNumber*4) + 8);
 
-	if (offset < 0) {
+//	if (offset < 0) {
         offset = getVal(offset, 25, 0);  //  Same value but 26 bits.
-	}
+//	}
 	return cond + code + asr(offset, 2);
 }
 
@@ -59,7 +59,9 @@ uint32_t bne(char* label) {
 	
         printf("%08x\n", cond);
         printf("%08x\n", code); 
+        printf("Here\n");
         printf("%08x\n", offset);
+        printf("Here\n");
         printf("%08x\n",  asr(offset, 2)); 
         printf("%08x\n", cond + code + asr(offset, 2)); 
 	return cond + code + asr(offset, 2) ;
@@ -68,45 +70,45 @@ uint32_t bne(char* label) {
 uint32_t bge(char* label) {
     uint32_t cond = 0xa << 28;
 	uint32_t offset = lookup(&labels, label) - ((lineNumber*4) + 8);
-	if (offset < 0) {
+//	if (offset < 0) {
         offset = getVal(offset, 25, 0);  //  Same value but 26 bits.
-	}
+//	}
 	return cond + code + asr(offset, 2);
 }
 
 uint32_t blt(char* label) {
     uint32_t cond = 0xb << 28;
 	uint32_t offset = lookup(&labels, label) - ((lineNumber*4) + 8);
-	if (offset < 0) {
+//	if (offset < 0) {
         offset = getVal(offset, 25, 0);  //  Same value but 26 bits.
-	}
+//	}
 	return cond + code + asr(offset, 2);
 }
 
 uint32_t bgt(char* label) {
     uint32_t cond = 0xc << 28;
 	uint32_t offset = lookup(&labels, label) - ((lineNumber*4) + 8);
-	if (offset < 0) {
+//	if (offset < 0) {
         offset = getVal(offset, 25, 0);  //  Same value but 26 bits.
-	}
+//	}
 	return cond + code + asr(offset, 2);
 }
 
 uint32_t ble(char* label) {
     uint32_t cond = 0xd << 28;
 	uint32_t offset = lookup(&labels, label) - ((lineNumber*4) + 8);
-	if (offset < 0) {
+//	if (offset < 0) {
         offset = getVal(offset, 25, 0);  //  Same value but 26 bits.
-	}
+//	}
 	return cond + code + asr(offset, 2);
 }
 
 uint32_t b(char* label) {
     uint32_t cond = 0xe << 28;
 	uint32_t offset = lookup(&labels, label) - ((lineNumber*4) + 8);
-	if (offset < 0) {
+//	if (offset < 0) {
         offset = getVal(offset, 25, 0);  //  Same value but 26 bits.
-	}
+//	}
 	return cond + code + asr(offset, 2);
 }
 

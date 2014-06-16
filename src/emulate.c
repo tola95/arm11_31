@@ -353,8 +353,8 @@ uint32_t teq(uint32_t rn, uint32_t op2) {  //  CPSR flags := Rn XOR Op2
   
 }
 
-uint32_t cmp(uint32_t rn, uint32_t op2) {  //  CPSR flags := Rn - Op2
-
+uint32_t cmp(uint32_t rn, uint32_t op2) {  //  CPSR flags := Rn - Op2 
+  
   uint32_t result = rn - op2;
   
   if (decoded->s == 1) {
@@ -378,6 +378,7 @@ void eor(uint32_t rn, uint32_t op2, uint32_t rd) {  //  Rd := Rn XOR Op2
 }
 
 void sub(uint32_t rn, uint32_t op2, uint32_t rd) {  //  Rd := Rn - Op2
+
   Rg(rd) = cmp(rn, op2);
 }
 

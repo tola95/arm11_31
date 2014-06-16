@@ -16,8 +16,10 @@ int shift;
 
  uint32_t getRn1(char *address) {
    //Gets the register number for registers of form [Rn]
-   const char *p1 = strstr(address, "[r")+2;
-   const char *p2 = strstr(p1, "]");
+   char a[] = "[r";
+   char b[] = "]";
+   const char *p1 = strstr(address, a)+2;
+   const char *p2 = strstr(p1, b);
    size_t len = p2-p1;
    char *res = (char*)malloc(sizeof(char)*(len+1));
    strncpy(res, p1, len);
